@@ -1,3 +1,4 @@
+import os #modulo para manejar rutas de archivos y carpetas
 import tkinter as tk
 from PIL import Image, ImageTk
 
@@ -11,12 +12,17 @@ ventana.resizable(True, True)
 barra_tarea= tk.Frame(ventana, bg="lightgray" ,height=80)
 barra_tarea.pack(side=tk.TOP, fill=tk.X)
 "BARRA PRINCIPAL DE LA VENTANA- LOGO"
-img = Image.open("ICONS\\ICON.png")
+carpeta_script = os.path.dirname(os.path.abspath(__file__)) #Ruta dinámica a la imagen del logo
+ruta_icono = os.path.join(carpeta_script, "ICONS", "ICON.png") #ruta completa y absoluta a la imagen, sin importar dónde esté el proyecto.
+
+img = Image.open(ruta_icono)
 img = img.resize((150, 60))
 imagen_tk= ImageTk.PhotoImage(img) 
+
+
 label_logo= tk.Label(barra_tarea, image=imagen_tk,bg="lightgray")
 label_logo.place(relx=0,rely=0.0)
-
+label_logo.image = imagen_tk
 "BARRA PRINCIPAL DE LA VENTANA- TEXO"
 label_texto= tk.Label(barra_tarea, text="HOTEL MANAGER | DASH BOARD", bg="lightgray", font=("Aldrich", 20, "bold"))
 label_texto.place(relx=0.5,rely=0.5, anchor=tk.CENTER, x=-50, y=0)
