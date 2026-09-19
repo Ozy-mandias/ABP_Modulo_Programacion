@@ -12,7 +12,7 @@ ventana.resizable(True, True)
 barra_tarea= tk.Frame(ventana, bg="lightgray" ,height=80)
 barra_tarea.pack(side=tk.TOP, fill=tk.X)
 "BARRA PRINCIPAL DE LA VENTANA- LOGO"
-carpeta_script = os.path.dirname(os.path.abspath(__file__)) #Ruta dinámica a la imagen del logo
+carpeta_script = os.path.dirname(os.path.abspath(__file__)) #ruta dinámica a la imagen del logo
 ruta_icono = os.path.join(carpeta_script, "ICONS", "ICON.png") #ruta completa y absoluta a la imagen, sin importar dónde esté el proyecto.
 
 img = Image.open(ruta_icono)
