@@ -1,5 +1,4 @@
 import tkinter as tk 
-
 def contenido_reserva(parent):  #dibuja el contenido de pantalla reservas
     contenedor = tk.Frame(parent, bg="white", width=680, height=47)
     contenedor.pack(anchor="w", padx=30, pady=(30, 0))
@@ -155,7 +154,21 @@ def contenido_reserva(parent):  #dibuja el contenido de pantalla reservas
     encabezado.pack(fill=tk.X)
     encabezado.pack_propagate(False)
 
+
     #Columnas de la tabla 
+    filas = [
+        ("#12345", "Juan Pérez", "#15", "07/10/2026", "07/11/2026", "Confirmado", "Eliminar / Editar"),
+        ("#12344", "Juan Pérez", "#14", "08/10/2026", "15/10/2026", "Confirmado", "Eliminar / Editar"),
+        ("#12343", "Juan Pérez", "#12", "07/10/2026", "07/11/2026", "Cancelado", "Eliminar / Editar"),
+        ("#12342", "Juan Pérez", "#13", "17/09/2026", "22/10/2026", "Confirmado", "Eliminar / Editar"),
+        ("#12341", "Juan Pérez", "#16", "17/10/2026", "07/11/2026", "Confirmado", "Eliminar / Editar"),
+        ("#12340", "Juan Pérez", "#17", "07/10/2026", "12/11/2026", "Cancelado", "Eliminar / Editar"),
+        ("#12339", "Juan Pérez", "#5", "09/12/2026", "23/12/2026", "Pendiente", "Eliminar / Editar"),
+    ]
+    
+    for i, datos in enumerate(filas):
+        y = 42 + (i * 47)
+        dibujar_fila(contenedor_tabla, y, datos)
 
     tk.Label(
         encabezado,
@@ -211,62 +224,29 @@ def contenido_reserva(parent):  #dibuja el contenido de pantalla reservas
         fg="#434343",
         font=("Aldrich", 10)).place(x=601, y=16)
 
-    #Primera fila (Hardcodeada)
+def dibujar_fila(contenedor, y, datos):
+    """Dibuja una fila de la tabla en la posición y con los datos dados."""
+    confirmacion, nombre, habitacion, check_in, check_out, estado, accion = datos
     
-    fila1 = tk.Frame(contenedor_tabla, bg="white", width=680, height=47)
-    fila1.pack(fill=tk.X)
-    fila1.pack_propagate(False)
-
-    tk.Label(
-        fila1, text="#12345", 
-        bg="white", 
-        fg="#434343",
-        font=("Aldrich", 10), 
-        anchor="w").place(x=11, y=15)
-
-    tk.Label(fila1, 
-        text="Juan Pérez", 
-        bg="white", 
-        fg="#434343",
-        font=("Aldrich", 10), 
-        anchor="w").place(x=100, y=15)
-    tk.Label(fila1, 
-        text="#15", 
-        bg="white",
-          fg="#434343",
-        font=("Aldrich", 10), 
-        anchor="w").place(x=237, y=15)
-    tk.Label(
-        fila1, text="07/10/2026", 
-        bg="white", 
-        fg="#434343",
-        font=("Aldrich", 10),
-          anchor="w").place(x=298, y=15)
-    tk.Label(
-        fila1, text="07/11/2026", 
-        bg="white", 
-        fg="#434343",
-        font=("Aldrich", 10), 
-        anchor="w").place(x=395, y=15)
-    tk.Label(
-        fila1, 
-        text="Confirmado", 
-        bg="white", 
-        fg="#434343",
-        font=("Aldrich", 10), 
-        anchor="w" ).place(x=511, y=15)
-    tk.Label(fila1, 
-        text="Eliminar / Editar", 
-        bg="white", 
-        fg="#434343",
-        font=("Aldrich", 8), 
-        anchor="w").place(x=600, y=15)
-    # Separador
-    tk.Frame(fila1, 
-    bg="#D9D9D9",
-    height=2, 
-    width=648).place(x=11, y=45)
-
+    tk.Label(contenedor, text=confirmacion, bg="white", fg="#434343",
+             font=("Aldrich", 10), anchor="w").place(x=11, y=y + 15)
     
+    tk.Label(contenedor, text=nombre, bg="white", fg="#434343",
+             font=("Aldrich", 10), anchor="w").place(x=100, y=y + 15)
     
+    tk.Label(contenedor, text=habitacion, bg="white", fg="#434343",
+             font=("Aldrich", 10), anchor="w").place(x=237, y=y + 15)
     
+    tk.Label(contenedor, text=check_in, bg="white", fg="#434343",
+             font=("Aldrich", 10), anchor="w").place(x=298, y=y + 15)
+    
+    tk.Label(contenedor, text=check_out, bg="white", fg="#434343",
+             font=("Aldrich", 10), anchor="w").place(x=395, y=y + 15)
+    
+    tk.Label(contenedor, text=estado, bg="white", fg="#434343",
+             font=("Aldrich", 10), anchor="w").place(x=511, y=y + 15)
+    
+    tk.Label(contenedor, text=accion, bg="white", fg="#434343",
+             font=("Aldrich", 8), anchor="w").place(x=601, y=y + 19)
+    
+    tk.Frame(contenedor, bg="#D9D9D9", height=1, width=648).place(x=11, y=y + 47)

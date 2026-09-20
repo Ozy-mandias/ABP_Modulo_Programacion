@@ -8,6 +8,7 @@ from componentes.barra_superior import crear_barra_superior
 from componentes.menu_lateral import crear_menu_lateral
 from ventanas.inicio import contenido_inicio
 from ventanas.reserva import contenido_reserva
+from ventanas.huespedes import contenido_huespedes
 
 
 class App:
@@ -16,7 +17,7 @@ class App:
         self.ventana = tk.Tk()
         self.ventana.title("Hotel Manager")
         self.ventana.geometry("900x600")
-        self.ventana.attributes("-fullscreen", True)
+        self.ventana.geometry("1050x800")  
         self.ventana.resizable(True, True)
         
         crear_barra_superior(self.ventana)
@@ -43,6 +44,8 @@ class App:
             contenido_inicio(self.cuerpo)
         elif nombre == "reservas":
             contenido_reserva(self.cuerpo)
+        elif nombre == "huespedes":
+            contenido_huespedes(self.cuerpo)
         else:
             # Placeholder para las pantallas que aún no están
             tk.Label(
