@@ -18,7 +18,7 @@ def contenido_reserva(parent):  #dibuja el contenido de pantalla reservas
         text= "Agregar Nueva Reserva", 
         bg="#434343", 
         fg="white", 
-        font=("Aldrich", 11),
+        font=("Aldrich", 12),
         relief=tk.FLAT, #boton sin relieve
         cursor="hand2") #cursor mano
     boton_agregar.place(x=453, y=0, width=227, height=47)
