@@ -1,5 +1,5 @@
 """
-Punto de entrada de la aplicación.
+Punto de entrada de la aplicación. prueba de commit
 Arma la ventana principal con barra superior, menú lateral y cuerpo navegable.
 """
 import tkinter as tk
