@@ -10,7 +10,7 @@ from ventanas.inicio import contenido_inicio
 from ventanas.reserva import contenido_reserva
 from ventanas.huespedes import contenido_huespedes
 from ventanas.habitaciones import contenido_habitaciones
-
+from ventanas.consultas import contenido_consultas
 
 class App:
     def __init__(self):
@@ -52,6 +52,8 @@ class App:
             contenido_huespedes(self.cuerpo)
         elif nombre == "habitaciones":
             contenido_habitaciones(self.cuerpo)
+        elif nombre == "consultas":
+            contenido_consultas(self.cuerpo)
         else:
             # Placeholder para las pantallas que aún no están
             tk.Label(
