@@ -1,0 +1,206 @@
+# Bitácora de Equipo — GestARHO
+
+**Proyecto:** GestARHO - Sistema de Gestión Hotelera para Alojamientos de 1 a 2 Estrellas  
+**Institución:** Instituto Superior Politécnico de Córdoba  
+**Materia:** Base de Datos — Módulo Programador (ABP)  
+**Docentes:** Pagnoni Veronica Karina · Ceballes Ramiro  
+**Período:** Septiembre — Octubre 2026  
+
+---
+
+## Integrantes
+
+| Integrante | Usuario Git | Rol principal |
+|---|---|---|
+| Urzagasti Augusto Rubén | Ozy-mandias | Coordinador / Modelo de datos |
+| Valdez Lautaro | lautival | Modelo de datos / Acceso a datos |
+| Lorenti Valentino | Valentino399 | Interfaz (frames y pantallas) |
+| Roldan Misael | MisaRoljr12569 | Interfaz (pantallas) |
+| Torres Alvaro Joaquín | alvato21 | Consultas / Documentación / CRUD |
+
+---
+
+## Semana 1 (01/09 al 07/09/2026)
+
+**Objetivo:** Investigación del sector y definición del alcance del proyecto.
+
+| Integrante | Tarea realizada | Evidencia |
+|---|---|---|
+| Augusto | Creación del repositorio Git, estructura inicial e investigación del sector hotelero | commit inicial |
+| Valentino | Análisis y modelado conceptual preliminar de las entidades para el diagrama Entidad-Relación (E-R). | documento |
+| Misael | Primera ventana en Tkinter (estructura base del proyecto) | `PRIMERA VENTANA` |
+| Lautaro | Investigación de herramientas (Tkinter, MySQL, SQLite) | documento |
+| Alvaro | Análisis de requisitos iniciales | documento |
+
+**Decisiones tomadas:**
+- Enfocar el proyecto en hoteles de 1 y 2 estrellas.
+- Usar Python + Tkinter para la interfaz y MySQL/SQLite para la base de datos.
+- Adoptar la metodología ABP con entregas parciales.
+
+---
+
+## Semana 2 (08/09 al 14/09/2026)
+
+**Objetivo:** Modelado conceptual inicial y primeras pantallas.
+
+| Integrante | Tarea realizada | Evidencia |
+|---|---|---|
+| Misael | Desarrollo de la pantalla de Reservas con panel de filtros | `Agrego pantalla de Reservas con panel de filtros y tabla` |
+| Augusto | Refactorización del proyecto en módulos reutilizables | `Refactorizo el proyecto en modulos: componentes reutilizables, ventanas y main con navegacion` |
+| Valentino | Diseño de la arquitectura de la interfaz, maquetado de frames y definición de la jerarquía visual del sistema. | `Agrego ruta dinamica con os.path para la imagen` |
+| Lautaro | Finalización del diagrama E-R conceptual | documento |
+| Alvaro | Definición de entidades iniciales y análisis de requisitos | documento |
+
+**Decisiones tomadas:**
+- Separar la interfaz en módulos (`componentes/`, `ventanas/`).
+- Definir cinco entidades iniciales: Usuario, Huésped, Reserva, Habitación, Pago.
+
+---
+
+## Semana 3 (15/09 al 21/09/2026)
+
+**Objetivo:** Completar pantallas iniciales y desarrollar el diccionario de datos.
+
+| Integrante | Tarea realizada | Evidencia |
+|---|---|---|
+| Augusto | Pantalla de Huéspedes con tabla de datos de muestra | `Agrego pantalla de Huespedes con tabla de datos de muestra` |
+| Augusto | Pantalla de Habitaciones con resaltado de botón activo | `Agrego pantalla de Habitaciones y resaltado de boton activo en el menu` |
+| Misael | Ajustes a la pantalla de Reservas | commit |
+| Valentino | Construcción y refinamiento de la estructura visual para garantizar la usabilidad y coherencia en el flujo de pantallas. | commit |
+| Lautaro | Desarrollo de módulo de pagos y consumos | `Avances de pagos_y_consumos` |
+| Alvaro | Creación de la sección de Consultas y Diccionario de Datos | `Creacion de la seccion de consultas` |
+
+**Decisiones tomadas:**
+- Agregar CONSUMO y CONSULTA como entidades independientes.
+- Definir las tablas intermedias `reserva_habitacion` y `reserva_huesped`.
+- Usar SQLite como motor para el prototipo inicial.
+
+**Observación:** A partir de esta semana, el integrante Mauro Aguirre Cabral dejó de participar del proyecto (ver observaciones finales).
+
+---
+
+## Semana 4 (22/09 al 28/09/2026)
+
+**Objetivo:** Revisión del docente y primera corrección.
+
+| Integrante | Tarea realizada | Evidencia |
+|---|---|---|
+| Augusto | Coordinación y fusión de ramas + corrección de la minuta según devolución docente | `Merge remote-tracking branch 'origin/main' into pagos-y-consumos` |
+| Lautaro | Continuación del módulo de pagos y consumos | `Avances de pagos_y_consumos` |
+| Valentino | Integración de datos dinámicos y estructuración de la información en el panel de inicio | `Agregando datos del inicio` |
+| Misael | Ajustes a la interfaz de Reservas | commit |
+| Alvaro | Diseño de CRUD de pantallas: agregar huésped, agregar reserva, agregar consulta | `Codigo completo de Consultas y se añadieron fotos + config de main` |
+
+**Decisiones tomadas:**
+- Profundizar en las reglas de negocio (RN-01 a RN-07).
+- Agregar la tabla `concepto_consumo` como catálogo.
+- Eliminar el campo `agregar_consumo` de la tabla PAGO.
+
+---
+
+## Semana 5 (29/09 al 05/10/2026)
+
+**Objetivo:** Ampliación de reglas de negocio, casos borde y ajustes al modelo.
+
+| Integrante | Tarea realizada | Evidencia |
+|---|---|---|
+| Augusto | Ampliación de reglas de negocio (RN-01 a RN-27) y casos borde (CB-01 a CB-11) | documento |
+| Augusto | Ajustes al modelo Entidad-Relación (cardinalidades y relaciones) | Figma |
+| Alvaro | Desarrollo del diagrama lógico y ajustes a la tabla DDL | dbdiagram / script SQL |
+| Valentino | Diseño de media fidelidad en Figma y maquetado de las vistas de operaciones CRUD, optimizando la experiencia de usuario. Además, desarrollo del prototipado 
+interactivo definiendo los flujos de navegación y transiciones entre pantallas. | Figma / Tkinter |
+| Lautaro | Ajustes al módulo de acceso a datos | código Python |
+
+**Decisiones tomadas:**
+- Adoptar la Alternativa 1: `tipo_habitacion` y `capacidad` como atributos de `habitacion`.
+- Crear el catálogo `concepto_consumo` con baja lógica.
+- Relacionar CONSUMO con RESERVA (FK simple).
+
+---
+
+## Semana 6 (06/10 al 12/10/2026)
+
+**Objetivo:** Correcciones finales y cierre del Hito 3.
+
+| Integrante | Tarea realizada | Evidencia |
+|---|---|---|
+| Augusto | Correcciones del informe (3FN y justificación de Habitación) | documento |
+| Augusto | Ampliación de la minuta con nuevas reglas de negocio | documento |
+| Valentino | Ajustes de cardinalidades en el modelo E-R | Figma |
+| Alvaro | Creación de la rama `pagos-y-consumos` (luego fusionada) | `Fusiono rama pagos-y-consumos en main` |
+| Lautaro | Implementación del trigger de no doble reserva | script SQL |
+
+**Decisiones tomadas:**
+- Cerrar el tema Habitaciones con la Alternativa 1.
+- Implementar el catálogo `concepto_consumo` en el DDL.
+- Documentar la respuesta a la profesora sobre los tres puntos pendientes.
+
+---
+
+## Historial de commits relevantes
+
+| Fecha | Autor | Commit |
+|---|---|---|
+| 17/09/2026 | MisaRoljr12569 | `PRIMERA VENTANA` |
+| 17/09/2026 | Ozy-mandias | `Actualizo ABP` |
+| 18/09/2026 | Ozy-mandias | `Agrego ruta dinamica con os.path para la imagen` |
+| 18/09/2026 | Ozy-mandias | `Agrego pantalla de Reservas con panel de filtros y tabla` |
+| 19/09/2026 | Ozy-mandias | `Refactorizo el proyecto en modulos: componentes reutilizables, ventanas y main con navegacion` |
+| 19/09/2026 | Ozy-mandias | `Agrego pantalla de Huespedes con tabla de datos de muestra` |
+| 19/09/2026 | Ozy-mandias | `Agrego pantalla de Habitaciones y resaltado de boton activo en el menu` |
+| 20/09/2026 | Valentino399 | `Agregando datos del inicio` |
+| 20/09/2026 | lautival | `Avances de pagos_y_consumos` |
+| 20/09/2026 | lautival | `Merge remote-tracking branch 'origin/main' into pagos-y-consumos` |
+| 21/09/2026 | alvato21 | `Prueba` |
+| 21/09/2026 | alvato21 | `Prueba de commit` |
+| 21/09/2026 | alvato21 | `Creacion de la seccion de consultas` |
+| 21/09/2026 | alvato21 | `Codigo completo de Consultas y se añadieron fotos + config de main` |
+| 22/09/2026 | Ozy-mandias | `Fusiono rama pagos-y-consumos en main` |
+
+---
+
+## Distribución de roles según el ABP
+
+| Rol | Responsabilidad principal | Integrantes |
+|---|---|---|
+| Coordinador | Organiza reuniones, controla plazos y consolida entregas | Augusto Urzagasti |
+| Modelo de datos | Diseña el E-R, normaliza, redacta el diccionario y el DDL | Lautaro Valdez, Augusto Urzagasti, Alvaro Torres |
+| Interfaz | Construye las ventanas, formularios y listados en Tkinter | Misael Roldan, Valentino Lorenti |
+| Acceso a datos | Conexión a la base y sentencias SQL desde Python | Lautaro Valdez |
+| Validaciones | Control de datos, manejo de errores y mensajes | Alvaro Torres |
+| Documentación y pruebas | Informe, manual de usuario y pruebas del sistema | Augusto Urzagasti, Alvaro Torres |
+
+---
+
+## Observaciones finales
+
+El equipo mantuvo una participación activa a lo largo del cuatrimestre, aunque con una reestructuración significativa a partir de la tercera semana. 
+El integrante **Mauro Aguirre Cabral**, que inicialmente formaba parte del equipo, **dejó de participar del proyecto a partir de la Semana 3**, 
+sin retomar sus tareas asignadas (documentación y pruebas). Esta situación fue comunicada oportunamente a los docentes
+ y el equipo debió **redistribuir las responsabilidades** para cubrir las tareas pendientes.
+
+Como consecuencia de esta reestructuración:
+
+- **Augusto Urzagasti** asumió el rol de coordinador y, además, se hizo cargo de las correcciones del informe, 
+la ampliación de reglas de negocio y casos borde, los ajustes al modelo E-R y la ampliación de la minuta.
+- **Alvaro Torres** asumió las tareas de documentación y desarrolló el diccionario de datos, el diagrama lógico,
+ los ajustes al DDL, el CRUD de pantallas (agregar huésped, agregar reserva, agregar consulta) y 
+la creación de la rama `pagos-y-consumos`.
+- **Lautaro Valdez** se ocupó del acceso a datos, el módulo de pagos y consumos, el trigger de no doble reserva y 
+la finalización del E-R inicial.
+- **Valentino Lorenti** lideró el diseño de Interfaz (UI) y la arquitectura visual del sistema, desarrollando prototipos interactivos de media fidelidad en Figma y 
+definiendo los flujos de navegación. Además, se encargó del maquetado de las vistas para operaciones CRUD y colaboró en la revisión y optimización de las cardinalidades en el modelo Entidad-Relación.
+- **Misael Roldan** colaboró en el desarrollo inicial de la interfaz y ajustes puntuales a la pantalla de Reservas.
+
+A pesar de la baja de un integrante y la consiguiente redistribución de tareas, 
+el equipo logró completar los entregables del Hito 3 y mantener un ritmo de trabajo sostenido. 
+La organización modular del repositorio permitió el trabajo paralelo en interfaz, modelo de datos y
+ acceso a datos sin conflictos significativos. Los avances fueron revisados en cada hito por los docentes y corregidos según sus devoluciones.
+
+---
+
+## Nota sobre la documentación del abandono
+
+El abandono de un integrante es una situación que el equipo decidió **documentar en la bitácora** por transparencia y para dejar constancia de la reorganización interna.
+ Sin embargo, **no se detalla en el informe general del proyecto**, ya que el foco de la entrega final debe estar en el producto y no en las incidencias del equipo.
+ La información queda registrada en este documento de bitácora, que es la evidencia que el ABP solicita específicamente para acreditar la participación individual.
