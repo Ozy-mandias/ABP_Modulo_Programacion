@@ -3,23 +3,26 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import date
+import math 
 
 COLOR_TEXTO = "#434343"
 COLOR_BORDE = "#5b9bd5"
 COLOR_FONDO = "white"
 COLOR_GRIS_CLARO = "#f2f2f2"
 COLOR_NEGRO = "black"
+METODOS_PAGO = ("Efectivo, Transferencia, Tarjeta")
 
 FUENTE_TITULO = ("Aldrich", 20, "bold")
 FUENTE_SUBTITULO = ("Aldrich", 12, "bold")
 FUENTE_TEXTO = ("Arial", 10) 
 FUENTE_TEXTO_BOLD = ("Arial", 10, "bold")
 
+
 def buscar_reserva_mock(criterio):
     """Simula la búsqueda de una reserva por N° de confirmación o por DNI"""
     return{
         "confirmacion":"12345",
-        "huespede":"Lautaro Valdez",
+        "huespedes":"Lautaro Valdez",
         "habitacion":"15 (Suite)",
         "check_in":"07/10/2026",
         "check_out":"07/11/2026",
@@ -37,6 +40,7 @@ def buscar_reserva_mock(criterio):
         ]
 
     }
+
 
 
 def formato_moneda(monto):
@@ -240,7 +244,7 @@ class PantallaPagosConsumos:
         self.reserva = reserva
         self.lbl_detalle_titulo.config(text=f"DETALLE DE LA RESERVA #{reserva['confirmacion']}")
  
-        valores = [reserva["confirmacion"], reserva["huesped"], reserva["habitacion"],
+        valores = [reserva["confirmacion"], reserva["huespedes"], reserva["habitacion"],
                    reserva["check_in"], reserva["check_out"]]
         for var, valor in zip(self.vars_detalle, valores):
             var.set(valor)
@@ -301,7 +305,7 @@ class PantallaPagosConsumos:
             return
         self._abrir_dialogo_generico(
             titulo="Agregar Pago",
-            campos=[("Monto", "monto"), ("Método (Efectivo/Transferencia/Tarjeta)", "metodo")],
+            campos=[("Monto", "monto"), ("Métodos de pago", "metodo",  METODOS_PAGO)],
             al_guardar=self._guardar_pago
         )
  
@@ -357,16 +361,22 @@ class PantallaPagosConsumos:
         ventana.grab_set()
  
         entradas = {}
-        for i, (etiqueta, clave) in enumerate(campos):
+        for i, campo in enumerate(campos):
+            etiqueta, clave = campo[0], campo[1]
+            opciones = campo[2] if len(campo) > 2 else None
+
             tk.Label(ventana, text=etiqueta, font=FUENTE_TEXTO, bg=COLOR_FONDO).grid(
                 row=i, column=0, sticky="w", padx=10, pady=8
             )
-            entry = tk.Entry(ventana, font=FUENTE_TEXTO)
-            entry.grid(row=i, column=1, padx=10, pady=8)
-            entradas[clave] = entry
- 
+            if opciones:
+                widget = ttk.Combobox(ventana, values=opciones, state="readonly", font=FUENTE_TEXTO)
+            else:
+                widget = tk.Entry(ventana, font=FUENTE_TEXTO)
+            widget.grid(row=i, column=1, padx=10, pady=8)
+            entradas[clave] = widget
+
         def guardar():
-            valores = {clave: entry.get() for clave, entry in entradas.items()}
+            valores = {clave: w.get() for clave, w in entradas.items()}
             if al_guardar(valores):
                 ventana.destroy()
  
