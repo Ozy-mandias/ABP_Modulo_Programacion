@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 from acceso_datos import (
     insertar_huesped, listar_huespedes, buscar_huespedes,
     actualizar_huesped, eliminar_huesped, obtener_huesped_por_id,
@@ -433,6 +433,20 @@ def contenido_huespedes(parent):
             "¿Está SEGURO? Esta acción NO se puede deshacer.\n"
             "El huésped se borrará permanentemente de la base."):
             return
+
+        # Capa de seguridad: Solicitar contraseña de administrador
+        password = simpledialog.askstring(
+            "Seguridad", 
+            "Ingrese la contraseña de administrador para continuar:", 
+            show='*'
+        )
+
+        # Verificar la contraseña (puedes cambiar "Admin2026!" por la que prefieras)
+        if password != "Admin2026!":
+            messagebox.showerror("Acceso Denegado", "Contraseña incorrecta o cancelada. Operación abortada.")
+            return
+
+        # Si la contraseña es correcta, procede a eliminar
         exito, mensaje = eliminar_huesped_definitivo(id_huesped)
         if exito:
             messagebox.showinfo("Éxito", mensaje)
