@@ -5,7 +5,7 @@ sobre la base de datos MySQL.
 """
 
 import mysql.connector
-from conexion import obtener_conexion, cerrar_conexion
+from conexion import obtener_conexion, obtener_conexion_admin, cerrar_conexion
 
 
 # ============================================================
@@ -318,12 +318,13 @@ def restaurar_huesped(id_huesped):
 def eliminar_huesped_definitivo(id_huesped):
     """
     Elimina físicamente un huésped de la base.
+    Usa la conexión ADMIN (recepcionista no tiene permiso de DELETE).
     Falla si el huésped tiene reservas asociadas.
     Retorna (True, "mensaje") o (False, "mensaje de error").
     """
-    conexion = obtener_conexion()
+    conexion = obtener_conexion_admin()
     if not conexion:
-        return False, "No se pudo conectar a la base de datos."
+        return False, "No se pudo conectar como administrador."
 
     try:
         cursor = conexion.cursor()
@@ -334,6 +335,9 @@ def eliminar_huesped_definitivo(id_huesped):
         conexion.rollback()
         return False, ("No se puede eliminar: el huésped tiene reservas asociadas. "
                        "Primero eliminá esas reservas o dejanlo dado de baja.")
+    except mysql.connector.ProgrammingError as e:
+        conexion.rollback()
+        return False, f"Acceso denegado por el SGBD: {e}"
     except Exception as e:
         conexion.rollback()
         return False, f"Error inesperado: {e}"

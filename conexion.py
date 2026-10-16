@@ -9,8 +9,28 @@ from mysql.connector import Error
 
 def obtener_conexion():
     """
-    Devuelve una conexión activa a la base de datos gestarho.
-    Retorna None si la conexión falla.
+    Conexión como recepcionista (rol por defecto).
+    Tiene SELECT en todas las tablas e INSERT/UPDATE en tablas operativas.
+    NO puede hacer DELETE.
+    """
+    try:
+        conexion = mysql.connector.connect(
+            host='localhost',
+            port=3306,
+            user='recepcionista_user',
+            password='Recep2026!',
+            database='gestarho'
+        )
+        return conexion
+    except Error as e:
+        print(f"Error al conectar (recepcionista): {e}")
+        return None
+
+
+def obtener_conexion_admin():
+    """
+    Conexión como administrador.
+    Se usa SOLO para operaciones críticas (ej: DELETE definitivo).
     """
     try:
         conexion = mysql.connector.connect(
@@ -22,7 +42,7 @@ def obtener_conexion():
         )
         return conexion
     except Error as e:
-        print(f"Error al conectar a MySQL: {e}")
+        print(f"Error al conectar (admin): {e}")
         return None
 
 
