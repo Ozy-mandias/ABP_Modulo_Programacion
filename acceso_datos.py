@@ -9,6 +9,213 @@ from conexion import obtener_conexion, obtener_conexion_admin, cerrar_conexion
 
 
 # ============================================================
+# HABITACIONES
+# Lectura: rol recepcionista (SELECT en todas las tablas).
+# Alta y edición: rol administrador, porque el recepcionista
+# no tiene permiso de escritura sobre la tabla habitacion.
+# ============================================================
+
+def insertar_habitacion(tipo, capacidad, precio_noche, estado):
+    """
+    Inserta una habitación nueva.
+    Retorna (True, "mensaje") o (False, "mensaje de error").
+    """
+    conexion = obtener_conexion_admin()
+    if not conexion:
+        return False, "No se pudo conectar a la base de datos."
+
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            INSERT INTO habitacion
+                (tipo_habitacion, capacidad, precio_noche, estado_habitacion)
+            VALUES (%s, %s, %s, %s)
+        """, (tipo, capacidad, precio_noche, estado))
+        conexion.commit()
+        return True, f"Habitación #{cursor.lastrowid} registrada correctamente."
+
+    except mysql.connector.IntegrityError as e:
+        conexion.rollback()
+        return False, f"Los datos no cumplen las restricciones de la base: {e.msg}"
+
+    except mysql.connector.Error as e:
+        conexion.rollback()
+        return False, f"Error de base de datos: {e}"
+
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def listar_habitaciones(tipo=None, estado=None):
+    """
+    Devuelve las habitaciones, con filtros opcionales por tipo y/o estado.
+    Los valores van como parámetros, nunca concatenados en el SQL.
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return []
+
+    sql = """
+        SELECT id_habitacion, tipo_habitacion, capacidad,
+               precio_noche, estado_habitacion
+        FROM habitacion
+    """
+    condiciones = []
+    parametros = []
+    if tipo:
+        condiciones.append("tipo_habitacion = %s")
+        parametros.append(tipo)
+    if estado:
+        condiciones.append("estado_habitacion = %s")
+        parametros.append(estado)
+    if condiciones:
+        sql += " WHERE " + " AND ".join(condiciones)
+    sql += " ORDER BY id_habitacion"
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute(sql, tuple(parametros))
+        return cursor.fetchall()
+    except mysql.connector.Error as e:
+        print(f"Error al listar habitaciones: {e}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def obtener_habitacion_por_id(id_habitacion):
+    """Devuelve los datos de una habitación por su ID."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id_habitacion, tipo_habitacion, capacidad,
+                   precio_noche, estado_habitacion
+            FROM habitacion
+            WHERE id_habitacion = %s
+        """, (id_habitacion,))
+        return cursor.fetchone()
+    except mysql.connector.Error as e:
+        print(f"Error al obtener habitación: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def actualizar_habitacion(id_habitacion, tipo, capacidad, precio_noche, estado):
+    """
+    Actualiza los datos de una habitación existente.
+    Retorna (True, "mensaje") o (False, "mensaje de error").
+    """
+    conexion = obtener_conexion_admin()
+    if not conexion:
+        return False, "No se pudo conectar a la base de datos."
+
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            UPDATE habitacion
+            SET tipo_habitacion = %s, capacidad = %s,
+                precio_noche = %s, estado_habitacion = %s
+            WHERE id_habitacion = %s
+        """, (tipo, capacidad, precio_noche, estado, id_habitacion))
+        conexion.commit()
+        return True, "Habitación actualizada correctamente."
+
+    except mysql.connector.IntegrityError as e:
+        conexion.rollback()
+        return False, f"Los datos no cumplen las restricciones de la base: {e.msg}"
+
+    except mysql.connector.Error as e:
+        conexion.rollback()
+        return False, f"Error de base de datos: {e}"
+
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def eliminar_habitacion(id_habitacion):
+    """
+    Elimina definitivamente una habitación.
+    Si tiene reservas asociadas, la base lo impide (clave foránea).
+    Retorna (True, "mensaje") o (False, "mensaje de error").
+    """
+    conexion = obtener_conexion_admin()
+    if not conexion:
+        return False, "No se pudo conectar a la base de datos."
+
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("DELETE FROM habitacion WHERE id_habitacion = %s",
+                       (id_habitacion,))
+        conexion.commit()
+        return True, "Habitación eliminada correctamente."
+
+    except mysql.connector.IntegrityError:
+        conexion.rollback()
+        return False, ("No se puede eliminar: la habitación tiene reservas "
+                       "asociadas. Puede ponerla en estado Mantenimiento.")
+
+    except mysql.connector.Error as e:
+        conexion.rollback()
+        return False, f"Error de base de datos: {e}"
+
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def listar_reservas_habitacion(id_habitacion):
+    """
+    Consulta con JOIN entre habitación, reserva y huésped:
+    devuelve las reservas de una habitación con su huésped titular.
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return []
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT r.id_reserva, r.fecha_ingreso, r.fecha_salida,
+                   r.estado_reserva, h.nombre, h.apellido
+            FROM reserva_habitacion rh
+            INNER JOIN reserva r ON r.id_reserva = rh.id_reserva
+            LEFT JOIN reserva_huesped rhu
+                   ON rhu.id_reserva = r.id_reserva AND rhu.rol = 'titular'
+            LEFT JOIN huesped h ON h.id_huesped = rhu.id_huesped
+            WHERE rh.id_habitacion = %s
+            ORDER BY r.fecha_ingreso DESC
+        """, (id_habitacion,))
+        return cursor.fetchall()
+    except mysql.connector.Error as e:
+        print(f"Error al listar reservas de la habitación: {e}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+# ============================================================
 # HUÉSPEDES - CRUD
 # ============================================================
 

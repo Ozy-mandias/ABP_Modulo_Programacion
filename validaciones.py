@@ -55,3 +55,39 @@ def validar_huesped(datos):
 
     es_valido = len(errores) == 0
     return es_valido, errores
+
+
+TIPOS_HABITACION = ("simple", "doble", "suite", "familiar")
+ESTADOS_HABITACION = ("disponible", "ocupada", "mantenimiento")
+
+
+def validar_habitacion(datos):
+    """
+    Valida los datos de una habitación antes de registrarla o actualizarla.
+    Retorna una tupla: (booleano_es_valido, lista_de_errores)
+    """
+    errores = []
+
+    if datos.get('tipo', '') not in TIPOS_HABITACION:
+        errores.append("Debe seleccionar un tipo de habitación válido.")
+
+    capacidad = datos.get('capacidad', '').strip()
+    if not capacidad:
+        errores.append("La capacidad es obligatoria.")
+    elif not capacidad.isdigit():
+        errores.append("La capacidad debe ser un número entero.")
+    elif not (1 <= int(capacidad) <= 20):
+        errores.append("La capacidad debe estar entre 1 y 20 personas.")
+
+    precio = datos.get('precio_noche', '').strip().replace(",", ".")
+    if not precio:
+        errores.append("El precio por noche es obligatorio.")
+    elif not re.match(r'^\d+(\.\d{1,2})?$', precio):
+        errores.append("El precio debe ser un número sin puntos de miles ni símbolos (ejemplo: 45000).")
+    elif float(precio) <= 0:
+        errores.append("El precio por noche debe ser mayor a cero.")
+
+    if datos.get('estado', '') not in ESTADOS_HABITACION:
+        errores.append("Debe seleccionar un estado válido.")
+
+    return len(errores) == 0, errores
