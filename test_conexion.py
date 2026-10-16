@@ -19,24 +19,24 @@ if conexion:
     # Probar consulta simple
     cursor.execute("SELECT COUNT(*) FROM huesped")
     cantidad_huespedes = cursor.fetchone()[0]
-    print(f"📋 Huéspedes en la base: {cantidad_huespedes}")
+    print(f"Huéspedes en la base: {cantidad_huespedes}")
     
     cursor.execute("SELECT COUNT(*) FROM habitacion")
     cantidad_habitaciones = cursor.fetchone()[0]
-    print(f"🏨 Habitaciones en la base: {cantidad_habitaciones}")
+    print(f" Habitaciones en la base: {cantidad_habitaciones}")
     
     cursor.execute("SELECT COUNT(*) FROM reserva")
     cantidad_reservas = cursor.fetchone()[0]
-    print(f"📅 Reservas en la base: {cantidad_reservas}")
+    print(f" Reservas en la base: {cantidad_reservas}")
     
     cursor.close()
     cerrar_conexion(conexion)
     
     print("=" * 50)
-    print("✅ TODO FUNCIONA CORRECTAMENTE")
+    print(" TODO FUNCIONA CORRECTAMENTE")
     print("=" * 50)
 else:
-    print("❌ No se pudo conectar a MySQL")
+    print(" No se pudo conectar a MySQL")
     print("Verificar:")
     print("  - MySQL Server está corriendo")
     print("  - Usuario/contraseña correctos")
