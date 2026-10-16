@@ -28,7 +28,7 @@ class App:
         self.caja.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         _,self.botones_menu = crear_menu_lateral(self.caja, self.cambiar_pantalla)
         
-        # Cuerpo (donde cambia el contenido)
+        # Cuerpo (donde cambi a el contenido)
         self.cuerpo = tk.Frame(self.caja, bg="white")
         self.cuerpo.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         

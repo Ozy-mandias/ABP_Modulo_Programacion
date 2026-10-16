@@ -4,22 +4,39 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import date
 
-COLOR_TEXTO = "#434343"
-COLOR_BORDE = "#5b9bd5"
+# ---------------------------------------------------------------- estilo
+# Mismo estilo que el resto de la aplicación: fuente Aldrich, cuadros blancos con
+# borde negro (como las cajas del dashboard) y botones gris oscuro.
+COLOR_TITULO = "#434343"       # título de la pantalla
+COLOR_TEXTO = "black"          # texto dentro de los cuadros
 COLOR_FONDO = "white"
-COLOR_GRIS_CLARO = "#f2f2f2"
-COLOR_NEGRO = "black"
+COLOR_ENCABEZADO = "#D9D9D9"   # encabezados de tabla
+COLOR_SELECCION = "#EBEBEB"
+COLOR_BOTON = "#434343"
+COLOR_BOTON_ACTIVO = "#5A5A5A"
+COLOR_PLACEHOLDER = "#9A9A9A"
+COLOR_OK = "#3CA433"           # verde de la pantalla de Consultas
+COLOR_ALERTA = "#C0392B"
 
-FUENTE_TITULO = ("Aldrich", 20, "bold")
+FUENTE_TITULO = ("Aldrich", 24)
 FUENTE_SUBTITULO = ("Aldrich", 12, "bold")
-FUENTE_TEXTO = ("Arial", 10) 
-FUENTE_TEXTO_BOLD = ("Arial", 10, "bold")
+FUENTE_TEXTO = ("Aldrich", 10)
+FUENTE_TEXTO_BOLD = ("Aldrich", 10, "bold")
+FUENTE_ENCABEZADO = ("Aldrich", 9)
+
+# Opciones que comparten los cuadros, botones y campos de texto
+ESTILO_CAJA = dict(bg=COLOR_FONDO, relief=tk.SOLID, bd=2)   # cuadro con borde negro
+ESTILO_BOTON = dict(bg=COLOR_BOTON, fg="white", font=FUENTE_TEXTO, relief=tk.FLAT, bd=0,
+                    cursor="hand2", activebackground=COLOR_BOTON_ACTIVO, activeforeground="white")
+ESTILO_ENTRADA = dict(font=FUENTE_TEXTO, bg=COLOR_BOTON, insertbackground="white", relief=tk.FLAT)
+
+PLACEHOLDER_BUSQUEDA = "# De confirmación o DNI"
 
 def buscar_reserva_mock(criterio):
     """Simula la búsqueda de una reserva por N° de confirmación o por DNI"""
     return{
         "confirmacion":"12345",
-        "huespede":"Lautaro Valdez",
+        "huesped":"Lautaro Valdez",
         "habitacion":"15 (Suite)",
         "check_in":"07/10/2026",
         "check_out":"07/11/2026",
@@ -49,9 +66,11 @@ class PantallaPagosConsumos:
     def __init__(self,contenedor):
         self.contenedor = contenedor
         self.reserva = None
-        
+
+        self._configurar_estilo_tablas()
+
         self.frame = tk.Frame(contenedor, bg=COLOR_FONDO)
-        self.frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        self.frame.pack(anchor="w", fill=tk.X, padx=(30, 40), pady=(20, 0))
 
         self._crear_titulo()
         self._crear_buscador()
@@ -59,198 +78,174 @@ class PantallaPagosConsumos:
         self._crear_pagos_y_consumos()
         self._crear_resumen()
 
-        self._cargar_reserva(buscar_reserva_mock("")) 
+        self._cargar_reserva(buscar_reserva_mock(""))
 
         #Interfaz de Usuario
 
+    def _configurar_estilo_tablas(self):
+        """Da a las tablas (ttk.Treeview) el mismo aspecto que las del resto de la app."""
+        estilo = ttk.Style()
+        estilo.theme_use("clam")   # este tema permite cambiar los colores del encabezado
+        estilo.configure("Hotel.Treeview", background=COLOR_FONDO, fieldbackground=COLOR_FONDO,
+                         foreground=COLOR_TEXTO, font=FUENTE_TEXTO, rowheight=26, borderwidth=0)
+        estilo.configure("Hotel.Treeview.Heading", background=COLOR_ENCABEZADO, foreground=COLOR_TEXTO,
+                         font=FUENTE_ENCABEZADO, relief="flat", borderwidth=0, padding=(0, 5))
+        estilo.map("Hotel.Treeview", background=[("selected", COLOR_SELECCION)],
+                   foreground=[("selected", COLOR_TEXTO)])
+        estilo.map("Hotel.Treeview.Heading", background=[("active", COLOR_ENCABEZADO)])
+        estilo.layout("Hotel.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])  # sin borde
+
     def _crear_titulo(self):
         tk.Label(
-        self.frame, text="ESTADO DE CUENTA",
-        font=FUENTE_TITULO, bg=COLOR_FONDO, fg=COLOR_NEGRO
-    ).pack(anchor="w", pady=(0, 15))
+            self.frame, text="ESTADO DE CUENTA",
+            font=FUENTE_TITULO, bg=COLOR_FONDO, fg=COLOR_TITULO, anchor="w"
+        ).pack(anchor="w")
 
     def _crear_buscador(self):
-        caja = tk.Frame(self.frame, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE, 
-                    highlightthickness=1)
-        caja.pack(fill=tk.X, pady=(0, 15))
+        caja = tk.Frame(self.frame, **ESTILO_CAJA)
+        caja.pack(fill=tk.X, pady=(12, 0))
 
-        interior = tk.Frame(caja, bg=COLOR_FONDO)
-        interior.pack(fill=tk.X, padx=15, pady=12)
+        tk.Label(caja, text="Buscar Reserva", font=FUENTE_SUBTITULO, bg=COLOR_FONDO,
+                 fg=COLOR_TEXTO).pack(anchor="w", padx=20, pady=(10, 4))
 
-        tk.Label(interior, text="Buscar Reserva", font=FUENTE_SUBTITULO, bg=COLOR_FONDO,
-             fg=COLOR_NEGRO).pack(anchor="w")
-        fila = tk.Frame(interior, bg=COLOR_FONDO)
-        fila.pack(fill=tk.X, pady=(8, 0))
+        fila = tk.Frame(caja, bg=COLOR_FONDO)
+        fila.pack(fill=tk.X, padx=20, pady=(0, 12))
 
-        self.entry_busqueda = tk.Entry(fila, font=FUENTE_TEXTO, fg="#999999")
-        self.entry_busqueda.insert(0, "# De confirmación o DNI")
+        self.entry_busqueda = tk.Entry(fila, fg=COLOR_PLACEHOLDER, **ESTILO_ENTRADA)
+        self.entry_busqueda.insert(0, PLACEHOLDER_BUSQUEDA)
         self.entry_busqueda.bind("<FocusIn>", self._limpiar_placeholder)
-        self.entry_busqueda.bind("<FocusIn>", self._limpiar_placeholder)
-        self.entry_busqueda.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+        self.entry_busqueda.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
 
-        tk.Button(
-            fila, text="Buscar", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO, fg="white", activebackground="#333333",
-                        activeforeground="white", bd=0, padx=20,command=self._on_buscar
-                        ).pack(side=tk.LEFT, padx=(10, 0))
+        tk.Button(fila, text="Buscar", command=self._on_buscar, padx=25,
+                  **ESTILO_BOTON).pack(side=tk.LEFT, padx=(20, 0))
 
 
     def _limpiar_placeholder(self, event):
-        if self.entry_busqueda.get() == "# De confirmación o DNI":
+        if self.entry_busqueda.get() == PLACEHOLDER_BUSQUEDA:
             self.entry_busqueda.delete(0, tk.END)
-            self.entrcly_busqueda.config(fg=COLOR_NEGRO)
+            self.entry_busqueda.config(fg="white")
 
 
     def _crear_detalle_reserva(self):
-        self.caja_detalle = tk.Frame(self.frame, bg=COLOR_FONDO,
-                highlightbackground=COLOR_BORDE, highlightthickness=1)
-        self.caja_detalle.pack(fill=tk.X, pady=(0, 15))
- 
+        caja = tk.Frame(self.frame, **ESTILO_CAJA)
+        caja.pack(fill=tk.X, pady=(12, 0))
+
         self.lbl_detalle_titulo = tk.Label(
-        self.caja_detalle, text="DETALLE DE LA RESERVA",
-        font=FUENTE_SUBTITULO, bg=COLOR_FONDO, fg=COLOR_NEGRO
+            caja, text="DETALLE DE LA RESERVA",
+            font=FUENTE_SUBTITULO, bg=COLOR_FONDO, fg=COLOR_TEXTO
         )
-        self.lbl_detalle_titulo.pack(anchor="w", padx=15, pady=(10, 5))
+        self.lbl_detalle_titulo.pack(anchor="w", padx=20, pady=(10, 8))
 
-        linea = tk.Frame(self.caja_detalle, bg=COLOR_NEGRO, height=1)
-        linea.pack(fill=tk.X, padx=15)
+        # Una sola fila de datos: encabezado gris + fila blanca
+        tabla = tk.Frame(caja, bg=COLOR_FONDO)
+        tabla.pack(fill=tk.X, pady=(0, 8))
 
-        columnas = tk.Frame(self.caja_detalle, bg=COLOR_FONDO)
-        columnas.pack(fill=tk.X, padx=15, pady=10)
         encabezados = ["Confirmación", "Nombre Huésped", "Hab. #", "Fecha Check-In", "Fecha Check-Out"]
         self.vars_detalle = []
         for i, titulo in enumerate(encabezados):
-            columnas.columnconfigure(i, weight=1)
-            tk.Label(columnas, text=titulo, font=FUENTE_TEXTO_BOLD,
-                     bg=COLOR_FONDO, fg=COLOR_TEXTO).grid(row=0, column=i, sticky="w")
+            tabla.columnconfigure(i, weight=1, uniform="detalle")
+            tk.Label(tabla, text=titulo, font=FUENTE_ENCABEZADO, bg=COLOR_ENCABEZADO, fg=COLOR_TEXTO,
+                     anchor="w", padx=10, pady=4).grid(row=0, column=i, sticky="ew")
             var = tk.StringVar(value="—")
-            tk.Label(columnas, textvariable=var, font=FUENTE_TEXTO,
-                     bg=COLOR_FONDO, fg=COLOR_NEGRO).grid(row=1, column=i, sticky="w", pady=(4, 0))
+            tk.Label(tabla, textvariable=var, font=FUENTE_TEXTO, bg=COLOR_FONDO, fg=COLOR_TEXTO,
+                     anchor="w", padx=10, pady=6).grid(row=1, column=i, sticky="ew")
             self.vars_detalle.append(var)
+
+    def _crear_caja_tabla(self, parent, columna, titulo, columnas, texto_boton, comando):
+        """Arma un cuadro con título, tabla, total y botón. Se usa para Pagos y para Consumos."""
+        caja = tk.Frame(parent, **ESTILO_CAJA)
+        caja.grid(row=0, column=columna, sticky="nsew",
+                  padx=(0, 6) if columna == 0 else (6, 0))
+
+        tk.Label(caja, text=titulo, font=FUENTE_SUBTITULO, bg=COLOR_FONDO,
+                 fg=COLOR_TEXTO).pack(pady=(10, 8))
+
+        tabla = ttk.Treeview(caja, columns=[c[0] for c in columnas], show="headings",
+                             height=4, style="Hotel.Treeview")
+        for col, encabezado, ancho in columnas:
+            tabla.heading(col, text=encabezado)
+            tabla.column(col, width=ancho, anchor="center")
+        tabla.pack(fill=tk.X, padx=10)
+
+        lbl_total = tk.Label(caja, text="Total Pagado: $0", font=FUENTE_TEXTO_BOLD,
+                             bg=COLOR_FONDO, fg=COLOR_TEXTO)
+        lbl_total.pack(anchor="e", padx=12, pady=(6, 4))
+
+        tk.Button(caja, text=texto_boton, command=comando, padx=15,
+                  **ESTILO_BOTON).pack(pady=(0, 10))
+        return tabla, lbl_total
 
     def _crear_pagos_y_consumos(self):
         fila = tk.Frame(self.frame, bg=COLOR_FONDO)
-        fila.pack(fill=tk.X, pady=(0, 15))
-        fila.columnconfigure(0, weight=1)
-        fila.columnconfigure(1, weight=1)
+        fila.pack(fill=tk.X, pady=(12, 0))
+        fila.columnconfigure(0, weight=1, uniform="cajas")
+        fila.columnconfigure(1, weight=1, uniform="cajas")
 
+        self.tabla_pagos, self.lbl_total_pagado = self._crear_caja_tabla(
+            fila, 0, "Historial de Pagos",
+            [("fecha", "Fecha", 90), ("metodo", "Método", 110), ("monto", "Monto", 90)],
+            "Agregar Pago", self._abrir_dialogo_pago)
 
-    #Historial de Pagos
+        self.tabla_consumos, self.lbl_total_consumos = self._crear_caja_tabla(
+            fila, 1, "Consumos Extras",
+            [("concepto", "Concepto", 100), ("cantidad", "Cantidad", 80), ("total", "Total", 90)],
+            "Agregar Consumo", self._abrir_dialogo_consumo)
 
-        caja_pagos = tk.Frame(fila, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE, highlightthickness=1)
-        caja_pagos.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-
-        tk.Label(caja_pagos, text="Historial de Pagos", font=FUENTE_SUBTITULO,
-                    bg=COLOR_FONDO, fg=COLOR_NEGRO).pack(pady=(10, 5))
-    
-        self.tabla_pagos = ttk.Treeview(
-            caja_pagos, columns=("fecha", "metodo", "monto"),
-            show="headings", height=5
-            )
-        for col, titulo, ancho in [("fecha", "Fecha", 90), ("metodo", "Método", 110), ("monto", "Monto", 90)]:
-            self.tabla_pagos.heading(col, text=titulo)
-            self.tabla_pagos.column(col, width=ancho, anchor="center")
-            self.tabla_pagos.pack(fill=tk.X, padx=10)
-            self.lbl_total_pagado = tk.Label(caja_pagos, text="Total Pagado: $0", font=FUENTE_TEXTO_BOLD,
-                            bg=COLOR_FONDO, fg=COLOR_NEGRO)
-            self.lbl_total_pagado.pack(anchor="e", padx=10, pady=(8, 5))
-
-        tk.Button(
-            caja_pagos, text="Agregar Pago", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
-            fg="white", activebackground="#333333", activeforeground="white", bd=0,
-            command=self._abrir_dialogo_pago
-        ).pack(pady=(0, 12))
-
-    #Consumos extra
-
-        caja_consumos = tk.Frame(fila, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE,
-                    highlightthickness=1)
-        caja_consumos.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-    
-        tk.Label(caja_consumos, text="Consumos Extras", font=FUENTE_SUBTITULO,
-                    bg=COLOR_FONDO, fg=COLOR_NEGRO).pack(pady=(10, 5))
-    
-        self.tabla_consumos = ttk.Treeview(
-            caja_consumos, columns=("concepto", "cantidad", "total"),
-            show="headings", height=5
-        )
-        for col, titulo, ancho in [("concepto", "Concepto", 100), ("cantidad", "Cantidad", 80), ("total", "Total", 90)]:
-            self.tabla_consumos.heading(col, text=titulo)
-            self.tabla_consumos.column(col, width=ancho, anchor="center")
-            self.tabla_consumos.pack(fill=tk.X, padx=10)
-    
-            self.lbl_total_consumos = tk.Label(caja_consumos, text="Total Pagado: $0",
-                                                font=FUENTE_TEXTO_BOLD, bg=COLOR_FONDO, fg=COLOR_NEGRO)
-            self.lbl_total_consumos.pack(anchor="e", padx=10, pady=(8, 5))
-    
-            tk.Button(
-                caja_consumos, text="Agregar Consumo", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
-                fg="white", activebackground="#333333", activeforeground="white", bd=0,
-                command=self._abrir_dialogo_consumo
-            ).pack(pady=(0, 12))
- 
     def _crear_resumen(self):
-        caja = tk.Frame(self.frame, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE,
-                         highlightthickness=1)
-        caja.pack(fill=tk.X)
- 
-        tk.Label(caja, text="Resumen de la Cuenta", font=FUENTE_SUBTITULO,
-                 bg=COLOR_FONDO, fg=COLOR_NEGRO).pack(pady=(10, 8))
- 
-        cuerpo = tk.Frame(caja, bg=COLOR_FONDO)
-        cuerpo.pack(fill=tk.X, padx=25)
-        cuerpo.columnconfigure(0, weight=1)
-        cuerpo.columnconfigure(1, weight=1)
- 
+        caja = tk.Frame(self.frame, **ESTILO_CAJA)
+        caja.pack(fill=tk.X, pady=(12, 0))
+
+        interior = tk.Frame(caja, bg=COLOR_FONDO)
+        interior.pack(fill=tk.X, padx=20, pady=10)
+        interior.columnconfigure(0, weight=1)
+        interior.columnconfigure(1, weight=1)
+
+        tk.Label(interior, text="Resumen de la Cuenta", font=FUENTE_SUBTITULO, bg=COLOR_FONDO,
+                 fg=COLOR_TEXTO).grid(row=0, column=0, sticky="w")
+
+        # botones arriba a la derecha
+        botones = tk.Frame(interior, bg=COLOR_FONDO)
+        botones.grid(row=0, column=1, sticky="e")
+        tk.Button(botones, text="Imprimir", command=self._on_imprimir, padx=15,
+                  **ESTILO_BOTON).pack(side=tk.RIGHT, padx=(10, 0))
+        tk.Button(botones, text="Finalizar / Cobrar", command=self._on_finalizar, padx=15,
+                  **ESTILO_BOTON).pack(side=tk.RIGHT)
+
         # columna izquierda
-        izq = tk.Frame(cuerpo, bg=COLOR_FONDO)
-        izq.grid(row=0, column=0, sticky="w")
-        self.lbl_estadia = tk.Label(izq, text="Estadía: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
+        izq = tk.Frame(interior, bg=COLOR_FONDO)
+        izq.grid(row=1, column=0, sticky="w", pady=(8, 0))
+        self.lbl_estadia = tk.Label(izq, text="Estadía: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO, fg=COLOR_TEXTO)
         self.lbl_estadia.pack(anchor="w", pady=2)
-        self.lbl_consumo = tk.Label(izq, text="Consumo: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
+        self.lbl_consumo = tk.Label(izq, text="Consumo: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO, fg=COLOR_TEXTO)
         self.lbl_consumo.pack(anchor="w", pady=2)
- 
+
         # columna derecha
-        der = tk.Frame(cuerpo, bg=COLOR_FONDO)
-        der.grid(row=0, column=1, sticky="e")
-        self.lbl_total = tk.Label(der, text="Total: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
+        der = tk.Frame(interior, bg=COLOR_FONDO)
+        der.grid(row=1, column=1, sticky="e", pady=(8, 0))
+        self.lbl_total = tk.Label(der, text="Total: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO, fg=COLOR_TEXTO)
         self.lbl_total.pack(anchor="e", pady=2)
-        self.lbl_pagado = tk.Label(der, text="Pagado: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
+        self.lbl_pagado = tk.Label(der, text="Pagado: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO, fg=COLOR_TEXTO)
         self.lbl_pagado.pack(anchor="e", pady=2)
         self.lbl_saldo = tk.Label(der, text="SALDO PENDIENTE: $0", font=FUENTE_TEXTO_BOLD,
-                                   bg=COLOR_FONDO, fg="#c0392b")
-        self.lbl_saldo.pack(anchor="e", pady=(6, 2))
- 
-        botones = tk.Frame(caja, bg=COLOR_FONDO)
-        botones.pack(fill=tk.X, padx=25, pady=(10, 15))
- 
-        tk.Button(
-            botones, text="Imprimir", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO, fg="white",
-            activebackground="#333333", activeforeground="white", bd=0, padx=15,
-            command=self._on_imprimir
-        ).pack(side=tk.RIGHT, padx=(10, 0))
- 
-        tk.Button(
-            botones, text="Finalizar / Cobrar", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
-            fg="white", activebackground="#333333", activeforeground="white", bd=0, padx=15,
-            command=self._on_finalizar
-        ).pack(side=tk.RIGHT)
- 
+                                  bg=COLOR_FONDO, fg=COLOR_ALERTA)
+        self.lbl_saldo.pack(anchor="e", pady=(4, 2))
+
     # --------------------------------------------------------------- lógica
     def _cargar_reserva(self, reserva):
         self.reserva = reserva
         self.lbl_detalle_titulo.config(text=f"DETALLE DE LA RESERVA #{reserva['confirmacion']}")
- 
+
         valores = [reserva["confirmacion"], reserva["huesped"], reserva["habitacion"],
                    reserva["check_in"], reserva["check_out"]]
         for var, valor in zip(self.vars_detalle, valores):
             var.set(valor)
- 
+
         self._refrescar_tablas()
- 
+
     def _refrescar_tablas(self):
         if not self.reserva:
             return
- 
+
         # Pagos
         self.tabla_pagos.delete(*self.tabla_pagos.get_children())
         total_pagado = 0
@@ -260,7 +255,7 @@ class PantallaPagosConsumos:
             ))
             total_pagado += pago["monto"]
         self.lbl_total_pagado.config(text=f"Total Pagado: {formato_moneda(total_pagado)}")
- 
+
         # Consumos
         self.tabla_consumos.delete(*self.tabla_consumos.get_children())
         total_consumos = 0
@@ -271,22 +266,24 @@ class PantallaPagosConsumos:
             ))
             total_consumos += subtotal
         self.lbl_total_consumos.config(text=f"Total Pagado: {formato_moneda(total_consumos)}")
- 
+
         # Resumen
         total_estadia = self.reserva["total_estadia"]
         total_general = total_estadia + total_consumos
         saldo = total_general - total_pagado
- 
+
         self.lbl_estadia.config(text=f"Estadía: {formato_moneda(total_estadia)}")
         self.lbl_consumo.config(text=f"Consumo: {formato_moneda(total_consumos)}")
         self.lbl_total.config(text=f"Total: {formato_moneda(total_general)}")
         self.lbl_pagado.config(text=f"Pagado: {formato_moneda(total_pagado)}")
-        self.lbl_saldo.config(text=f"SALDO PENDIENTE: {formato_moneda(saldo)}")
- 
+        # rojo si queda saldo por cobrar, verde si la cuenta está saldada
+        self.lbl_saldo.config(text=f"SALDO PENDIENTE: {formato_moneda(saldo)}",
+                              fg=COLOR_ALERTA if saldo > 0 else COLOR_OK)
+
     # ---------------------------------------------------------- callbacks
     def _on_buscar(self):
         criterio = self.entry_busqueda.get().strip()
-        if not criterio or criterio == "# De Confirmación o DNI":
+        if not criterio or criterio == PLACEHOLDER_BUSQUEDA:
             messagebox.showwarning("Buscar Reserva", "Ingresá un número de confirmación o DNI.")
             return
         # TODO: reemplazar por consulta real a la base de datos (tabla RESERVAS)
@@ -295,7 +292,7 @@ class PantallaPagosConsumos:
             messagebox.showerror("Buscar Reserva", "No se encontró ninguna reserva con ese dato.")
             return
         self._cargar_reserva(reserva)
- 
+
     def _abrir_dialogo_pago(self):
         if not self.reserva:
             return
@@ -304,7 +301,7 @@ class PantallaPagosConsumos:
             campos=[("Monto", "monto"), ("Método (Efectivo/Transferencia/Tarjeta)", "metodo")],
             al_guardar=self._guardar_pago
         )
- 
+
     def _guardar_pago(self, valores):
         try:
             monto = float(valores["monto"])
@@ -319,7 +316,7 @@ class PantallaPagosConsumos:
         })
         self._refrescar_tablas()
         return True
- 
+
     def _abrir_dialogo_consumo(self):
         if not self.reserva:
             return
@@ -328,7 +325,7 @@ class PantallaPagosConsumos:
             campos=[("Concepto", "concepto"), ("Cantidad", "cantidad"), ("Precio unitario", "precio")],
             al_guardar=self._guardar_consumo
         )
- 
+
     def _guardar_consumo(self, valores):
         try:
             cantidad = int(valores["cantidad"])
@@ -347,7 +344,7 @@ class PantallaPagosConsumos:
         })
         self._refrescar_tablas()
         return True
- 
+
     def _abrir_dialogo_generico(self, titulo, campos, al_guardar):
         """Crea un Toplevel simple con un Entry por campo y un botón Guardar."""
         ventana = tk.Toplevel(self.frame)
@@ -355,37 +352,34 @@ class PantallaPagosConsumos:
         ventana.configure(bg=COLOR_FONDO)
         ventana.resizable(False, False)
         ventana.grab_set()
- 
+
         entradas = {}
         for i, (etiqueta, clave) in enumerate(campos):
-            tk.Label(ventana, text=etiqueta, font=FUENTE_TEXTO, bg=COLOR_FONDO).grid(
-                row=i, column=0, sticky="w", padx=10, pady=8
-            )
-            entry = tk.Entry(ventana, font=FUENTE_TEXTO)
-            entry.grid(row=i, column=1, padx=10, pady=8)
+            tk.Label(ventana, text=etiqueta, font=FUENTE_TEXTO, bg=COLOR_FONDO,
+                     fg=COLOR_TEXTO).grid(row=i, column=0, sticky="w", padx=15, pady=8)
+            entry = tk.Entry(ventana, width=26, fg="white", **ESTILO_ENTRADA)
+            entry.grid(row=i, column=1, padx=15, pady=8, ipady=3)
             entradas[clave] = entry
- 
+
         def guardar():
             valores = {clave: entry.get() for clave, entry in entradas.items()}
             if al_guardar(valores):
                 ventana.destroy()
- 
-        tk.Button(
-            ventana, text="Guardar", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO, fg="white",
-            activebackground="#333333", activeforeground="white", bd=0, command=guardar
-        ).grid(row=len(campos), column=0, columnspan=2, pady=(5, 12))
- 
+
+        tk.Button(ventana, text="Guardar", command=guardar, padx=25,
+                  **ESTILO_BOTON).grid(row=len(campos), column=0, columnspan=2, pady=(5, 15))
+
     def _on_imprimir(self):
         # TODO: generar ticket/comprobante (PDF o impresión directa)
         messagebox.showinfo("Imprimir", "Generación de ticket todavía no implementada.")
- 
+
     def _on_finalizar(self):
         if not self.reserva:
             return
         # TODO: cerrar la cuenta en la base de datos (marcar reserva como Finalizada)
         messagebox.showinfo("Finalizar / Cobrar", "Cuenta cerrada correctamente (placeholder).")
- 
- 
+
+
 def contenido_pagos_consumos(frame):
     """Punto de entrada que usa main.py para montar esta pantalla."""
     PantallaPagosConsumos(frame)
