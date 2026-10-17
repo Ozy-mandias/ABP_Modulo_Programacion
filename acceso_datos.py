@@ -4,6 +4,8 @@ Contiene todas las funciones que ejecutan sentencias SQL
 sobre la base de datos MySQL.
 """
 
+from datetime import date, timedelta
+
 import mysql.connector
 from conexion import obtener_conexion, obtener_conexion_admin, cerrar_conexion
 
@@ -49,31 +51,50 @@ def insertar_habitacion(tipo, capacidad, precio_noche, estado):
         cerrar_conexion(conexion)
 
 
-def listar_habitaciones(tipo=None, estado=None):
+# Estado "real" de una habitación para una fecha: si figura como disponible
+# pero tiene una reserva CONFIRMADA que cubre la fecha (ingreso <= fecha < salida),
+# se considera ocupada. Usa 2 parámetros (fecha, fecha).
+SQL_ESTADO_EFECTIVO = """
+    CASE WHEN h.estado_habitacion = 'disponible' AND EXISTS (
+        SELECT 1
+        FROM reserva_habitacion rh
+        INNER JOIN reserva r ON r.id_reserva = rh.id_reserva
+        WHERE rh.id_habitacion = h.id_habitacion
+          AND r.estado_reserva = 'confirmado'
+          AND r.fecha_ingreso <= %s
+          AND r.fecha_salida > %s
+    ) THEN 'ocupada' ELSE h.estado_habitacion END
+"""
+
+
+def listar_habitaciones(tipo=None, estado=None, hoy=None):
     """
     Devuelve las habitaciones, con filtros opcionales por tipo y/o estado.
+    El estado devuelto es el estado EFECTIVO de hoy: una habitación con una
+    reserva confirmada vigente se muestra como ocupada.
     Los valores van como parámetros, nunca concatenados en el SQL.
     """
     conexion = obtener_conexion()
     if not conexion:
         return []
 
-    sql = """
-        SELECT id_habitacion, tipo_habitacion, capacidad,
-               precio_noche, estado_habitacion
-        FROM habitacion
+    hoy = hoy or date.today()
+    sql = f"""
+        SELECT h.id_habitacion, h.tipo_habitacion, h.capacidad,
+               h.precio_noche, ({SQL_ESTADO_EFECTIVO}) AS estado_habitacion
+        FROM habitacion h
     """
     condiciones = []
-    parametros = []
+    parametros = [hoy, hoy]
     if tipo:
-        condiciones.append("tipo_habitacion = %s")
+        condiciones.append("h.tipo_habitacion = %s")
         parametros.append(tipo)
     if estado:
-        condiciones.append("estado_habitacion = %s")
-        parametros.append(estado)
+        condiciones.append(f"({SQL_ESTADO_EFECTIVO}) = %s")
+        parametros += [hoy, hoy, estado]
     if condiciones:
         sql += " WHERE " + " AND ".join(condiciones)
-    sql += " ORDER BY id_habitacion"
+    sql += " ORDER BY h.id_habitacion"
 
     cursor = None
     try:
@@ -892,6 +913,170 @@ def obtener_habitacion_por_id(id_habitacion):
     except mysql.connector.Error as e:
         print(f"Error al obtener habitación: {e}")
         return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+# ============================================================
+# INICIO (DASHBOARD)
+# Todas las cifras salen de la base y se calculan para la fecha "hoy"
+# que recibe la función (la misma que muestra el reloj de la app).
+# ============================================================
+
+def obtener_resumen_dashboard(hoy=None):
+    """
+    Devuelve un diccionario con los indicadores del Inicio:
+    ocupación, check-ins/outs de hoy, consultas pendientes, reservas por
+    estado, saldo pendiente de cobro, cobrado en el mes y check-ins de la semana.
+    Retorna None si no hay conexión.
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
+
+    hoy = hoy or date.today()
+    lunes = hoy - timedelta(days=hoy.weekday())
+    domingo = lunes + timedelta(days=6)
+    primero_mes = hoy.replace(day=1)
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        r = {'hoy': hoy}
+
+        # Habitaciones operativas y ocupadas hoy (estado efectivo)
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM habitacion h
+            WHERE h.estado_habitacion <> 'mantenimiento'
+        """)
+        r['hab_operativas'] = cursor.fetchone()['n']
+
+        cursor.execute(f"""
+            SELECT COUNT(*) AS n FROM habitacion h
+            WHERE ({SQL_ESTADO_EFECTIVO}) = 'ocupada'
+        """, (hoy, hoy))
+        r['hab_ocupadas'] = cursor.fetchone()['n']
+
+        # Check-ins y check-outs de hoy (reservas no canceladas)
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM reserva
+            WHERE fecha_ingreso = %s AND estado_reserva <> 'cancelado'
+        """, (hoy,))
+        r['checkins_hoy'] = cursor.fetchone()['n']
+
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM reserva
+            WHERE fecha_salida = %s AND estado_reserva <> 'cancelado'
+        """, (hoy,))
+        r['checkouts_hoy'] = cursor.fetchone()['n']
+
+        # Consultas sin responder
+        cursor.execute("SELECT COUNT(*) AS n FROM consulta WHERE estado = 'Pendiente'")
+        r['consultas_pendientes'] = cursor.fetchone()['n']
+
+        # Reservas vigentes o futuras por estado
+        cursor.execute("""
+            SELECT estado_reserva, COUNT(*) AS n FROM reserva
+            WHERE fecha_salida >= %s
+            GROUP BY estado_reserva
+        """, (hoy,))
+        por_estado = {fila['estado_reserva']: fila['n'] for fila in cursor.fetchall()}
+        r['reservas_pendientes'] = por_estado.get('pendiente', 0)
+        r['reservas_confirmadas'] = por_estado.get('confirmado', 0)
+
+        # Saldo pendiente de cobro (vista v_saldo_reserva, sin canceladas)
+        cursor.execute("""
+            SELECT COALESCE(SUM(saldo_pendiente), 0) AS total
+            FROM v_saldo_reserva
+            WHERE estado_reserva <> 'cancelado' AND saldo_pendiente > 0
+        """)
+        r['saldo_pendiente'] = cursor.fetchone()['total']
+
+        # Cobrado en el mes (pagos aprobados)
+        cursor.execute("""
+            SELECT COALESCE(SUM(total_pagado), 0) AS total FROM pago
+            WHERE estado_pago = 'aprobado' AND fecha_pago BETWEEN %s AND %s
+        """, (primero_mes, hoy))
+        r['cobrado_mes'] = cursor.fetchone()['total']
+
+        # Check-ins de cada día de la semana actual (lunes a domingo)
+        cursor.execute("""
+            SELECT fecha_ingreso, COUNT(*) AS n FROM reserva
+            WHERE fecha_ingreso BETWEEN %s AND %s AND estado_reserva <> 'cancelado'
+            GROUP BY fecha_ingreso
+        """, (lunes, domingo))
+        por_dia = {fila['fecha_ingreso']: fila['n'] for fila in cursor.fetchall()}
+        r['checkins_semana'] = [
+            (lunes + timedelta(days=i), por_dia.get(lunes + timedelta(days=i), 0))
+            for i in range(7)
+        ]
+        return r
+
+    except mysql.connector.Error as e:
+        print(f"Error al obtener el resumen del dashboard: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def listar_consultas_pendientes(limite=5):
+    """Consultas sin responder, las más antiguas primero."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return []
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id_consulta, fecha, remitente, medio, asunto
+            FROM consulta
+            WHERE estado = 'Pendiente'
+            ORDER BY fecha ASC, id_consulta ASC
+            LIMIT %s
+        """, (int(limite),))
+        return cursor.fetchall()
+    except mysql.connector.Error as e:
+        print(f"Error al listar consultas pendientes: {e}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def listar_actividad_reciente(limite=5):
+    """Últimas reservas registradas, con titular y habitaciones (JOIN)."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return []
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT r.id_reserva, r.estado_reserva, r.fecha_ingreso,
+                   h.nombre, h.apellido,
+                   GROUP_CONCAT(DISTINCT rh.id_habitacion
+                                ORDER BY rh.id_habitacion SEPARATOR ', ') AS habitaciones
+            FROM reserva r
+            LEFT JOIN reserva_huesped rhu
+                   ON rhu.id_reserva = r.id_reserva AND rhu.rol = 'titular'
+            LEFT JOIN huesped h ON h.id_huesped = rhu.id_huesped
+            LEFT JOIN reserva_habitacion rh ON rh.id_reserva = r.id_reserva
+            GROUP BY r.id_reserva, r.estado_reserva, r.fecha_ingreso,
+                     h.nombre, h.apellido
+            ORDER BY r.id_reserva DESC
+            LIMIT %s
+        """, (int(limite),))
+        return cursor.fetchall()
+    except mysql.connector.Error as e:
+        print(f"Error al listar actividad reciente: {e}")
+        return []
     finally:
         if cursor:
             cursor.close()

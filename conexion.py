@@ -6,6 +6,15 @@ GestARHO - Sistema de Gestión Hotelera.
 import mysql.connector
 from mysql.connector import Error
 
+# Contraseña que pide la aplicación antes de un borrado definitivo.
+# (Solo para desarrollo/prueba: en un sistema real no debe estar en el código.)
+PASSWORD_ADMIN_APP = "Admin2026!"
+
+
+def verificar_password_admin(password):
+    """True si la contraseña ingresada coincide con la de administrador de la app."""
+    return password == PASSWORD_ADMIN_APP
+
 
 def obtener_conexion():
     """

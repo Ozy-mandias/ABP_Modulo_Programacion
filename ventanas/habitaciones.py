@@ -12,6 +12,7 @@ from acceso_datos import (
     actualizar_habitacion, listar_reservas_habitacion, eliminar_habitacion
 )
 from validaciones import validar_habitacion
+from conexion import verificar_password_admin
 
 TIPOS = ["Simple", "Doble", "Suite", "Familiar"]
 ESTADOS = ["Disponible", "Ocupada", "Mantenimiento"]
@@ -176,7 +177,7 @@ def abrir_formulario(frame_formulario, frame_lista, refrescar, id_habitacion=Non
             "Seguridad",
             "Ingrese la contraseña de administrador para continuar:",
             show='*')
-        if password != "Admin2026!":
+        if not verificar_password_admin(password):
             messagebox.showerror("Acceso Denegado",
                                  "Contraseña incorrecta o cancelada. Operación abortada.")
             return

@@ -19,7 +19,7 @@ def buscar_reserva_mock(criterio):
     """Simula la búsqueda de una reserva por N° de confirmación o por DNI"""
     return{
         "confirmacion":"12345",
-        "huespede":"Lautaro Valdez",
+        "huesped":"Lautaro Valdez",
         "habitacion":"15 (Suite)",
         "check_in":"07/10/2026",
         "check_out":"07/11/2026",
@@ -85,7 +85,6 @@ class PantallaPagosConsumos:
         self.entry_busqueda = tk.Entry(fila, font=FUENTE_TEXTO, fg="#999999")
         self.entry_busqueda.insert(0, "# De confirmación o DNI")
         self.entry_busqueda.bind("<FocusIn>", self._limpiar_placeholder)
-        self.entry_busqueda.bind("<FocusIn>", self._limpiar_placeholder)
         self.entry_busqueda.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
 
         tk.Button(
@@ -97,7 +96,7 @@ class PantallaPagosConsumos:
     def _limpiar_placeholder(self, event):
         if self.entry_busqueda.get() == "# De confirmación o DNI":
             self.entry_busqueda.delete(0, tk.END)
-            self.entrcly_busqueda.config(fg=COLOR_NEGRO)
+            self.entry_busqueda.config(fg=COLOR_NEGRO)
 
 
     def _crear_detalle_reserva(self):
@@ -149,10 +148,10 @@ class PantallaPagosConsumos:
         for col, titulo, ancho in [("fecha", "Fecha", 90), ("metodo", "Método", 110), ("monto", "Monto", 90)]:
             self.tabla_pagos.heading(col, text=titulo)
             self.tabla_pagos.column(col, width=ancho, anchor="center")
-            self.tabla_pagos.pack(fill=tk.X, padx=10)
-            self.lbl_total_pagado = tk.Label(caja_pagos, text="Total Pagado: $0", font=FUENTE_TEXTO_BOLD,
-                            bg=COLOR_FONDO, fg=COLOR_NEGRO)
-            self.lbl_total_pagado.pack(anchor="e", padx=10, pady=(8, 5))
+        self.tabla_pagos.pack(fill=tk.X, padx=10)
+        self.lbl_total_pagado = tk.Label(caja_pagos, text="Total Pagado: $0", font=FUENTE_TEXTO_BOLD,
+                        bg=COLOR_FONDO, fg=COLOR_NEGRO)
+        self.lbl_total_pagado.pack(anchor="e", padx=10, pady=(8, 5))
 
         tk.Button(
             caja_pagos, text="Agregar Pago", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
@@ -176,17 +175,17 @@ class PantallaPagosConsumos:
         for col, titulo, ancho in [("concepto", "Concepto", 100), ("cantidad", "Cantidad", 80), ("total", "Total", 90)]:
             self.tabla_consumos.heading(col, text=titulo)
             self.tabla_consumos.column(col, width=ancho, anchor="center")
-            self.tabla_consumos.pack(fill=tk.X, padx=10)
-    
-            self.lbl_total_consumos = tk.Label(caja_consumos, text="Total Pagado: $0",
-                                                font=FUENTE_TEXTO_BOLD, bg=COLOR_FONDO, fg=COLOR_NEGRO)
-            self.lbl_total_consumos.pack(anchor="e", padx=10, pady=(8, 5))
-    
-            tk.Button(
-                caja_consumos, text="Agregar Consumo", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
-                fg="white", activebackground="#333333", activeforeground="white", bd=0,
-                command=self._abrir_dialogo_consumo
-            ).pack(pady=(0, 12))
+        self.tabla_consumos.pack(fill=tk.X, padx=10)
+
+        self.lbl_total_consumos = tk.Label(caja_consumos, text="Total Consumos: $0",
+                                            font=FUENTE_TEXTO_BOLD, bg=COLOR_FONDO, fg=COLOR_NEGRO)
+        self.lbl_total_consumos.pack(anchor="e", padx=10, pady=(8, 5))
+
+        tk.Button(
+            caja_consumos, text="Agregar Consumo", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
+            fg="white", activebackground="#333333", activeforeground="white", bd=0,
+            command=self._abrir_dialogo_consumo
+        ).pack(pady=(0, 12))
  
     def _crear_resumen(self):
         caja = tk.Frame(self.frame, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE,
@@ -270,7 +269,7 @@ class PantallaPagosConsumos:
                 consumo["concepto"], consumo["cantidad"], formato_moneda(subtotal)
             ))
             total_consumos += subtotal
-        self.lbl_total_consumos.config(text=f"Total Pagado: {formato_moneda(total_consumos)}")
+        self.lbl_total_consumos.config(text=f"Total Consumos: {formato_moneda(total_consumos)}")
  
         # Resumen
         total_estadia = self.reserva["total_estadia"]
@@ -286,7 +285,7 @@ class PantallaPagosConsumos:
     # ---------------------------------------------------------- callbacks
     def _on_buscar(self):
         criterio = self.entry_busqueda.get().strip()
-        if not criterio or criterio == "# De Confirmación o DNI":
+        if not criterio or criterio == "# De confirmación o DNI":
             messagebox.showwarning("Buscar Reserva", "Ingresá un número de confirmación o DNI.")
             return
         # TODO: reemplazar por consulta real a la base de datos (tabla RESERVAS)

@@ -14,6 +14,7 @@ from acceso_datos import (
     obtener_habitacion_por_id
 )
 from validaciones import validar_reserva
+from conexion import verificar_password_admin
 
 COLOR_FONDO = "white"
 COLOR_PANEL = "#EBEBEB"
@@ -25,7 +26,6 @@ FUENTE_SUBTITULO = ("Aldrich", 18)
 FUENTE_TEXTO = ("Aldrich", 10)
 
 ESTADOS_RESERVA = ["Pendiente", "Confirmado", "Cancelado"]
-PASSWORD_ADMIN = "Admin2026!"
 
 
 def formato_fecha(fecha):
@@ -560,7 +560,7 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
             "Seguridad",
             "Ingrese la contraseña de administrador para continuar:",
             show='*')
-        if password != PASSWORD_ADMIN:
+        if not verificar_password_admin(password):
             messagebox.showerror("Acceso Denegado",
                                  "Contraseña incorrecta o cancelada.")
             return

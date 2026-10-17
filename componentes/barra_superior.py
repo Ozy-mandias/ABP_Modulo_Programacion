@@ -3,6 +3,7 @@
 
 import os
 import tkinter as tk
+from datetime import datetime
 from PIL import Image, ImageTk
 
 def crear_barra_superior(parent, titulo="HOTEL MANAGER | DASH BOARD"):
@@ -45,4 +46,31 @@ def crear_barra_superior(parent, titulo="HOTEL MANAGER | DASH BOARD"):
     )
     boton_cerrar.place(relx=1, rely=0.5, anchor=tk.CENTER, x=-50, y=0)
     
+#Reloj y fecha del sistema (se actualiza cada segundo)
+    DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    label_reloj = tk.Label(
+        barra_tarea,
+        text="",
+        bg="lightgray",
+        fg="#434343",
+        font=("Aldrich", 9),
+        justify=tk.RIGHT)
+    label_reloj.place(relx=1, rely=0.5, anchor="e", x=-85, y=0)
+
+    reloj = {"id": None}
+
+    def actualizar_reloj():
+        ahora = datetime.now()
+        label_reloj.config(
+            text=f"{DIAS[ahora.weekday()]} {ahora.strftime('%d/%m/%Y')}\n"
+                 f"{ahora.strftime('%H:%M:%S')}")
+        reloj["id"] = label_reloj.after(1000, actualizar_reloj)
+
+    def detener_reloj(event):
+        if event.widget is label_reloj and reloj["id"]:
+            label_reloj.after_cancel(reloj["id"])
+
+    label_reloj.bind("<Destroy>", detener_reloj)
+    actualizar_reloj()
+
     return barra_tarea
