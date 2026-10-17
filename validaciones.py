@@ -91,3 +91,85 @@ def validar_habitacion(datos):
         errores.append("Debe seleccionar un estado válido.")
 
     return len(errores) == 0, errores
+"""Validaciones específicas para la entidad Reserva."""
+
+from datetime import datetime
+
+
+# ============================================================
+# RESERVAS
+# ============================================================
+
+def validar_reserva(datos):
+    """
+    Valida los datos de una reserva antes de registrarla o actualizarla.
+    Retorna una tupla: (booleano_es_valido, lista_de_errores)
+    """
+    errores = []
+
+    # --- Huésped ---
+    huesped = str(datos.get('huesped', '')).strip()
+    if not huesped or huesped == "Seleccione un huésped":
+        errores.append("Debe seleccionar un huésped de la lista.")
+
+    # --- Fechas ---
+    fecha_ingreso_str = datos.get('fecha_ingreso', '').strip()
+    fecha_salida_str = datos.get('fecha_salida', '').strip()
+
+    fecha_ingreso = None
+    fecha_salida = None
+
+    if not fecha_ingreso_str:
+        errores.append("La fecha de ingreso es obligatoria.")
+    else:
+        try:
+            fecha_ingreso = datetime.strptime(fecha_ingreso_str, '%Y-%m-%d')
+        except ValueError:
+            errores.append("La fecha de ingreso debe tener el formato AAAA-MM-DD (ej: 2026-10-07).")
+
+    if not fecha_salida_str:
+        errores.append("La fecha de salida es obligatoria.")
+    else:
+        try:
+            fecha_salida = datetime.strptime(fecha_salida_str, '%Y-%m-%d')
+        except ValueError:
+            errores.append("La fecha de salida debe tener el formato AAAA-MM-DD (ej: 2026-11-07).")
+
+    if fecha_ingreso and fecha_salida and fecha_salida <= fecha_ingreso:
+        errores.append("La fecha de salida debe ser posterior a la fecha de ingreso.")
+
+    # --- Habitación ---
+    habitacion = str(datos.get('habitacion', '')).strip()
+    if not habitacion or habitacion == "Seleccione una habitación":
+        errores.append("Debe seleccionar una habitación de la lista.")
+
+    # --- Precio ---
+    precio_str = str(datos.get('precio_noche', '')).strip().replace(",", ".")
+    if not precio_str:
+        errores.append("El precio por noche es obligatorio.")
+    else:
+        try:
+            if float(precio_str) <= 0:
+                errores.append("El precio debe ser mayor a cero.")
+        except ValueError:
+            errores.append("El precio debe ser un número válido (ej: 25000 o 25000.50).")
+
+    # --- Nro Personas ---
+    personas_str = str(datos.get('nro_personas', '')).strip()
+    if not personas_str:
+        errores.append("El número de personas es obligatorio.")
+    elif not personas_str.isdigit():
+        errores.append("El número de personas debe ser un número entero.")
+    else:
+        personas = int(personas_str)
+        if personas < 1:
+            errores.append("Debe haber al menos 1 persona.")
+        elif personas > 20:
+            errores.append("El número de personas no puede superar las 20.")
+
+    # --- Estado ---
+    estados_validos = ("pendiente", "confirmado", "cancelado")
+    if datos.get('estado', '').lower() not in estados_validos:
+        errores.append(f"El estado debe ser uno de: {', '.join(estados_validos)}.")
+
+    return len(errores) == 0, errores
