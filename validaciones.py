@@ -55,3 +55,24 @@ def validar_huesped(datos):
 
     es_valido = len(errores) == 0
     return es_valido, errores
+
+def validar_consulta(datos):
+    """Valida datos de una consulta. Devuelve (es_valido, lista_errores)."""
+    errores = []
+    if not datos.get('remitente', '').strip():
+        errores.append("El remitente es obligatorio.")
+    if not datos.get('asunto', '').strip():
+        errores.append("El asunto es obligatorio.")
+    if datos.get('medio') not in ('WhatsApp', 'Web', 'Telefono', 'Email'):
+        errores.append("El medio debe ser WhatsApp, Web, Telefono o Email.")
+    if datos.get('estado') not in ('Pendiente', 'Terminado', 'Archivado'):
+        errores.append("El estado debe ser Pendiente, Terminado o Archivado.")
+    fecha = datos.get('fecha', '').strip()
+    if fecha:
+        try:
+            datetime.strptime(fecha, "%Y-%m-%d")
+        except ValueError:
+            errores.append("La fecha debe tener formato AAAA-MM-DD.")
+    else:
+        errores.append("La fecha es obligatoria.")
+    return (len(errores) == 0, errores)

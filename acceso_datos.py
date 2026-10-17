@@ -344,3 +344,105 @@ def eliminar_huesped_definitivo(id_huesped):
     finally:
         cursor.close()
         cerrar_conexion(conexion)
+        
+def listar_consultas(filtro_texto=None, estado=None, fecha_desde=None, fecha_hasta=None):
+    """Devuelve lista de consultas aplicando filtros opcionales."""
+    conexion = obtener_conexion()
+    cursor = conexion.cursor(dictionary=True)
+    sql = """
+        SELECT id_consulta, fecha, remitente, medio, asunto,
+               estado, id_reserva, id_usuario_asignado, fecha_creacion
+        FROM consulta
+        WHERE 1=1
+    """
+    params = []
+    if filtro_texto:
+        sql += " AND (remitente LIKE %s OR asunto LIKE %s)"
+        like = f"%{filtro_texto}%"
+        params.extend([like, like])
+    if estado:
+        sql += " AND estado = %s"
+        params.append(estado)
+    if fecha_desde:
+        sql += " AND fecha >= %s"
+        params.append(fecha_desde)
+    if fecha_hasta:
+        sql += " AND fecha <= %s"
+        params.append(fecha_hasta)
+    sql += " ORDER BY fecha DESC, id_consulta DESC"
+    cursor.execute(sql, params)
+    resultado = cursor.fetchall()
+    cursor.close()
+    conexion.close()
+    return resultado
+
+
+def obtener_consulta_por_id(id_consulta):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM consulta WHERE id_consulta = %s", (id_consulta,))
+    resultado = cursor.fetchone()
+    cursor.close()
+    conexion.close()
+    return resultado
+
+
+def insertar_consulta(fecha, remitente, medio, asunto, estado,
+                      id_reserva=None, id_usuario_asignado=None):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            """INSERT INTO consulta
+               (fecha, remitente, medio, asunto, estado,
+                id_reserva, id_usuario_asignado, fecha_creacion)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, CURDATE())""",
+            (fecha, remitente, medio, asunto, estado,
+             id_reserva, id_usuario_asignado)
+        )
+        conexion.commit()
+        return True, "Consulta registrada correctamente."
+    except Exception as e:
+        conexion.rollback()
+        return False, f"Error al registrar: {e}"
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+def actualizar_consulta(id_consulta, fecha, remitente, medio, asunto, estado,
+                        id_reserva=None, id_usuario_asignado=None):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute(
+            """UPDATE consulta
+               SET fecha=%s, remitente=%s, medio=%s, asunto=%s,
+                   estado=%s, id_reserva=%s, id_usuario_asignado=%s
+               WHERE id_consulta=%s""",
+            (fecha, remitente, medio, asunto, estado,
+             id_reserva, id_usuario_asignado, id_consulta)
+        )
+        conexion.commit()
+        return True, "Consulta actualizada correctamente."
+    except Exception as e:
+        conexion.rollback()
+        return False, f"Error al actualizar: {e}"
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+def eliminar_consulta(id_consulta):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    try:
+        cursor.execute("DELETE FROM consulta WHERE id_consulta = %s", (id_consulta,))
+        conexion.commit()
+        return True, "Consulta eliminada correctamente."
+    except Exception as e:
+        conexion.rollback()
+        return False, f"Error al eliminar: {e}"
+    finally:
+        cursor.close()
+        conexion.close()
