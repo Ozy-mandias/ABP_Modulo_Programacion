@@ -63,7 +63,8 @@ def dibujar_fila_habitacion(contenedor, y, datos, al_editar, al_ver_reservas):
 # ============================================================
 # FORMULARIO (agregar / editar)
 # ============================================================
-def abrir_formulario(frame_formulario, frame_lista, refrescar, id_habitacion=None):
+def abrir_formulario(frame_formulario, contenedor, panel_filtros, refrescar,
+                     id_habitacion=None):
     """Muestra el formulario embebido para agregar o editar una habitación."""
 
     datos = None
@@ -76,8 +77,14 @@ def abrir_formulario(frame_formulario, frame_lista, refrescar, id_habitacion=Non
     for w in frame_formulario.winfo_children():
         w.destroy()
 
+    # Igual que en Huéspedes: se ocultan título y filtros mientras se usa el formulario
+    contenedor.grid_remove()
+    panel_filtros.grid_remove()
+
     def volver():
         frame_formulario.grid_remove()
+        contenedor.grid()
+        panel_filtros.grid()
 
     # Encabezado
     header = tk.Frame(frame_formulario, bg="white")
@@ -351,7 +358,7 @@ def contenido_habitaciones(parent):
 
     # ----- Acciones -----
     def al_editar(id_habitacion):
-        abrir_formulario(frame_formulario, frame_lista, refrescar,
+        abrir_formulario(frame_formulario, contenedor, panel_filtros, refrescar,
                          id_habitacion=id_habitacion)
 
     def al_ver_reservas(id_habitacion):
@@ -374,7 +381,7 @@ def contenido_habitaciones(parent):
                             "\n".join(lineas))
 
     boton_agregar.configure(
-        command=lambda: abrir_formulario(frame_formulario, frame_lista, refrescar)
+        command=lambda: abrir_formulario(frame_formulario, contenedor, panel_filtros, refrescar)
     )
 
     # Carga inicial

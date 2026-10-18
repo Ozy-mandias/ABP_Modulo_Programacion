@@ -9,7 +9,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 from acceso_datos import (
     insertar_reserva, listar_reservas, obtener_reserva_por_id,
-    actualizar_reserva, eliminar_reserva,
+    actualizar_reserva, eliminar_reserva, resumen_registros_reserva,
     listar_huespedes_para_combo, listar_habitaciones_para_combo,
     obtener_habitacion_por_id
 )
@@ -26,6 +26,9 @@ FUENTE_SUBTITULO = ("Aldrich", 18)
 FUENTE_TEXTO = ("Aldrich", 10)
 
 ESTADOS_RESERVA = ["Pendiente", "Confirmado", "Cancelado"]
+
+
+PLACEHOLDER_FECHA = "AAAA-MM-DD"
 
 
 def formato_fecha(fecha):
@@ -95,16 +98,16 @@ def contenido_reserva(parent):
 
     campo_busqueda.bind("<FocusIn>", limpiar_placeholder_busqueda)
 
-    tk.Label(panel_filtros, text="Rango Fecha", bg=COLOR_PANEL,
+    tk.Label(panel_filtros, text="Rango Fecha (AAAA-MM-DD)", bg=COLOR_PANEL,
              fg=COLOR_TEXTO, font=FUENTE_TEXTO).place(x=329, y=15)
     fecha1 = tk.Entry(panel_filtros, font=FUENTE_TEXTO, bg=COLOR_BOTON_OSCURO,
                       fg="white", insertbackground="white", relief=tk.FLAT)
     fecha1.place(x=329, y=38, width=122, height=25)
-    fecha1.insert(0, "Rango Fecha")
+    fecha1.insert(0, PLACEHOLDER_FECHA)
     fecha1.config(fg="gray")
 
     def limpiar_placeholder_f1(event):
-        if fecha1.get() == "Rango Fecha":
+        if fecha1.get() == PLACEHOLDER_FECHA:
             fecha1.delete(0, tk.END)
             fecha1.config(fg="white")
     fecha1.bind("<FocusIn>", limpiar_placeholder_f1)
@@ -115,11 +118,11 @@ def contenido_reserva(parent):
     fecha2 = tk.Entry(panel_filtros, font=FUENTE_TEXTO, bg=COLOR_BOTON_OSCURO,
                       fg="white", insertbackground="white", relief=tk.FLAT)
     fecha2.place(x=485, y=38, width=92, height=25)
-    fecha2.insert(0, "Rango Fecha")
+    fecha2.insert(0, PLACEHOLDER_FECHA)
     fecha2.config(fg="gray")
 
     def limpiar_placeholder_f2(event):
-        if fecha2.get() == "Rango Fecha":
+        if fecha2.get() == PLACEHOLDER_FECHA:
             fecha2.delete(0, tk.END)
             fecha2.config(fg="white")
     fecha2.bind("<FocusIn>", limpiar_placeholder_f2)
@@ -275,10 +278,10 @@ def contenido_reserva(parent):
         campo_busqueda.insert(0, "Buscar por nombre huésped / Confirmación #")
         campo_busqueda.config(fg="gray")
         fecha1.delete(0, tk.END)
-        fecha1.insert(0, "Rango Fecha")
+        fecha1.insert(0, PLACEHOLDER_FECHA)
         fecha1.config(fg="gray")
         fecha2.delete(0, tk.END)
-        fecha2.insert(0, "Rango Fecha")
+        fecha2.insert(0, PLACEHOLDER_FECHA)
         fecha2.config(fg="gray")
         var_tipo_filtro.set("Tipo Habitación")
         var_estado_filtro.set("Estado Reserva")
@@ -540,7 +543,8 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
             exito, mensaje = actualizar_reserva(
                 datos['id_reserva'], id_huesped, id_habitacion,
                 datos_validar['fecha_ingreso'], datos_validar['fecha_salida'],
-                precio, nro_personas, datos_validar['estado']
+                precio, nro_personas, datos_validar['estado'],
+                id_habitacion_anterior=datos['id_habitacion']
             )
 
         if exito:
@@ -551,11 +555,9 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
 
     # --------- Borrar ---------
     def borrar():
-        if not messagebox.askyesno(
-                "Confirmar eliminación",
-                f"¿Está SEGURO de eliminar la reserva #{datos['id_reserva']}?\n"
-                "Esta acción NO se puede deshacer."):
-            return
+        id_reserva = datos['id_reserva']
+
+        # 1) Seguridad de la interfaz: contraseña de administrador
         password = simpledialog.askstring(
             "Seguridad",
             "Ingrese la contraseña de administrador para continuar:",
@@ -564,7 +566,37 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
             messagebox.showerror("Acceso Denegado",
                                  "Contraseña incorrecta o cancelada.")
             return
-        exito, mensaje = eliminar_reserva(datos['id_reserva'])
+
+        # 2) Aviso según los registros asociados (pagos / consumos)
+        resumen = resumen_registros_reserva(id_reserva)
+        if resumen is None:
+            messagebox.showerror("Error",
+                                 "No se pudieron consultar los pagos de la reserva.")
+            return
+        tiene_registros = resumen['n_pagos'] > 0 or resumen['n_consumos'] > 0
+
+        if tiene_registros:
+            mensaje_confirmar = (
+                f"La reserva #{id_reserva} tiene registros asociados:\n\n"
+                f"• Pagos: {resumen['n_pagos']} "
+                f"(aprobado ${resumen['aprobado']:,.2f} / "
+                f"pendiente ${resumen['pendiente']:,.2f})\n"
+                f"• Consumos: {resumen['n_consumos']} "
+                f"(${resumen['total_consumos']:,.2f})\n\n"
+                "Si continúa, esos pagos y consumos también se eliminarán y la "
+                "baja quedará registrada en la auditoría (usuario, fecha y montos).\n\n"
+                "¿Está seguro de que desea realizar esta acción?")
+        else:
+            mensaje_confirmar = (
+                f"¿Está SEGURO de eliminar la reserva #{id_reserva}?\n"
+                "La baja quedará registrada en la auditoría.")
+        if not messagebox.askyesno("Confirmar eliminación", mensaje_confirmar,
+                                   icon="warning"):
+            return
+
+        # 3) Seguridad del SGBD: la baja usa la conexión del rol administrador
+        exito, mensaje = eliminar_reserva(id_reserva,
+                                          confirmado_con_registros=tiene_registros)
         if exito:
             messagebox.showinfo("Éxito", mensaje)
             refrescar()

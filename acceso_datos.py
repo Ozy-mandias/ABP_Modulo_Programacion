@@ -573,6 +573,43 @@ def eliminar_huesped_definitivo(id_huesped):
         cursor.close()
         cerrar_conexion(conexion)
 # ============================================================
+# RESERVAS - CONTROL DE SUPERPOSICIÓN (RN-01)
+# ============================================================
+
+def buscar_conflicto_reserva(cursor, id_habitacion, fecha_ingreso, fecha_salida,
+                             id_reserva_excluida=None):
+    """
+    Devuelve (id_reserva, ingreso, salida) de una reserva activa que ocupa la
+    habitación en ese rango, o None si está libre.
+    Hay conflicto si: otra.ingreso < nueva.salida Y otra.salida > nueva.ingreso.
+    Las canceladas no cuentan; el día de salida puede ser el ingreso de otra.
+    """
+    sql = """
+        SELECT r.id_reserva, r.fecha_ingreso, r.fecha_salida
+        FROM reserva_habitacion rh
+        INNER JOIN reserva r ON r.id_reserva = rh.id_reserva
+        WHERE rh.id_habitacion = %s
+          AND r.estado_reserva <> 'cancelado'
+          AND r.fecha_ingreso < %s
+          AND r.fecha_salida > %s
+    """
+    params = [id_habitacion, fecha_salida, fecha_ingreso]
+    if id_reserva_excluida is not None:
+        sql += " AND r.id_reserva <> %s"
+        params.append(id_reserva_excluida)
+    sql += " LIMIT 1"
+    cursor.execute(sql, tuple(params))
+    return cursor.fetchone()
+
+
+def _mensaje_conflicto(id_habitacion, conflicto):
+    id_conf, ingreso, salida = conflicto
+    return (f"La habitación #{id_habitacion} ya está reservada del "
+            f"{ingreso.strftime('%d/%m/%Y')} al {salida.strftime('%d/%m/%Y')} "
+            f"(reserva #{id_conf}). Elija otra habitación u otras fechas.")
+
+
+# ============================================================
 # RESERVAS - CRUD
 # ============================================================
 
@@ -597,6 +634,13 @@ def insertar_reserva(id_huesped, id_habitacion, fecha_ingreso, fecha_salida,
         fs = datetime.strptime(fecha_salida, '%Y-%m-%d')
         noches = (fs - fi).days
         precio_total = noches * float(precio_noche)
+
+        # 0. Control de superposición (RN-01), salvo que se cree cancelada
+        if estado_reserva != 'cancelado':
+            conflicto = buscar_conflicto_reserva(cursor, id_habitacion,
+                                                 fecha_ingreso, fecha_salida)
+            if conflicto:
+                return False, _mensaje_conflicto(id_habitacion, conflicto)
 
         # 1. Insertar en tabla reserva
         cursor.execute("""
@@ -632,6 +676,8 @@ def insertar_reserva(id_huesped, id_habitacion, fecha_ingreso, fecha_salida,
         return False, f"Error de integridad: {e.msg}"
     except mysql.connector.Error as e:
         conexion.rollback()
+        if e.errno == 1644:  # SIGNAL del trigger anti doble reserva
+            return False, "La habitación ya está reservada en ese rango de fechas."
         return False, f"Error de base de datos: {e}"
     finally:
         if cursor:
@@ -741,8 +787,14 @@ def obtener_reserva_por_id(id_reserva):
         cerrar_conexion(conexion)
 
 def actualizar_reserva(id_reserva, id_huesped, id_habitacion, fecha_ingreso,
-                       fecha_salida, precio_noche, nro_personas, estado_reserva):
-    """Actualiza una reserva en las 3 tablas involucradas."""
+                       fecha_salida, precio_noche, nro_personas, estado_reserva,
+                       id_habitacion_anterior=None):
+    """
+    Actualiza una reserva en las 3 tablas involucradas.
+    id_habitacion_anterior: habitación que se está editando (la que tenía la
+    reserva antes del cambio). Solo se modifica ESA fila de reserva_habitacion;
+    las demás habitaciones de una reserva múltiple quedan intactas.
+    """
     conexion = obtener_conexion()
     if not conexion:
         return False, "No se pudo conectar a la base de datos."
@@ -755,7 +807,42 @@ def actualizar_reserva(id_reserva, id_huesped, id_habitacion, fecha_ingreso,
         fi = datetime.strptime(fecha_ingreso, '%Y-%m-%d')
         fs = datetime.strptime(fecha_salida, '%Y-%m-%d')
         noches = (fs - fi).days
-        precio_total = noches * float(precio_noche)
+
+        # Habitación a modificar: la indicada, o la primera de la reserva
+        if id_habitacion_anterior is None:
+            cursor.execute(
+                "SELECT MIN(id_habitacion) FROM reserva_habitacion WHERE id_reserva = %s",
+                (id_reserva,))
+            fila = cursor.fetchone()
+            id_habitacion_anterior = fila[0] if fila else None
+        if id_habitacion_anterior is None:
+            return False, "La reserva no tiene ninguna habitación asociada."
+
+        # Si se cambia a una habitación que ya tiene la misma reserva -> PK duplicada
+        if int(id_habitacion) != int(id_habitacion_anterior):
+            cursor.execute(
+                "SELECT 1 FROM reserva_habitacion WHERE id_reserva = %s AND id_habitacion = %s",
+                (id_reserva, id_habitacion))
+            if cursor.fetchone():
+                return False, (f"La reserva #{id_reserva} ya incluye la habitación "
+                               f"#{id_habitacion}. Elija otra.")
+
+        # Precio total = noches x (precio de la habitación editada + el de las demás)
+        cursor.execute(
+            """SELECT COALESCE(SUM(precio_noche_acordado), 0)
+               FROM reserva_habitacion
+               WHERE id_reserva = %s AND id_habitacion <> %s""",
+            (id_reserva, id_habitacion_anterior))
+        suma_otras = float(cursor.fetchone()[0])
+        precio_total = noches * (float(precio_noche) + suma_otras)
+
+        # Control de superposición (RN-01), salvo que quede cancelada
+        if estado_reserva != 'cancelado':
+            conflicto = buscar_conflicto_reserva(cursor, id_habitacion,
+                                                 fecha_ingreso, fecha_salida,
+                                                 id_reserva_excluida=id_reserva)
+            if conflicto:
+                return False, _mensaje_conflicto(id_habitacion, conflicto)
 
         cursor.execute("""
             UPDATE reserva
@@ -765,11 +852,12 @@ def actualizar_reserva(id_reserva, id_huesped, id_habitacion, fecha_ingreso,
         """, (fecha_ingreso, fecha_salida, nro_personas,
               precio_total, estado_reserva, id_reserva))
 
+        # Solo la fila de la habitación editada (antes cambiaba TODAS las filas)
         cursor.execute("""
             UPDATE reserva_habitacion
             SET precio_noche_acordado = %s, id_habitacion = %s
-            WHERE id_reserva = %s
-        """, (precio_noche, id_habitacion, id_reserva))
+            WHERE id_reserva = %s AND id_habitacion = %s
+        """, (precio_noche, id_habitacion, id_reserva, id_habitacion_anterior))
 
         cursor.execute("""
             UPDATE reserva_huesped
@@ -787,6 +875,8 @@ def actualizar_reserva(id_reserva, id_huesped, id_habitacion, fecha_ingreso,
         return False, f"Error de integridad: {e.msg}"
     except mysql.connector.Error as e:
         conexion.rollback()
+        if e.errno == 1644:  # SIGNAL del trigger anti doble reserva
+            return False, "La habitación ya está reservada en ese rango de fechas."
         return False, f"Error de base de datos: {e}"
     finally:
         if cursor:
@@ -794,39 +884,177 @@ def actualizar_reserva(id_reserva, id_huesped, id_habitacion, fecha_ingreso,
         cerrar_conexion(conexion)
 
 
-def eliminar_reserva(id_reserva):
-    """Elimina una reserva y sus asociaciones. Usa conexión ADMIN."""
+ID_USUARIO_ACTUAL = 1  # la app todavía no tiene login; mismo criterio que al crear reservas
+
+
+def resumen_baja_reserva(id_reserva):
+    """
+    Resume lo que se perdería al eliminar una reserva (pagos y consumos), para
+    mostrar el aviso antes de confirmar. Devuelve un dict o None si hay error.
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT
+                COUNT(*) AS n_pagos,
+                COALESCE(SUM(CASE WHEN estado_pago = 'aprobado'
+                                  THEN total_pagado END), 0) AS monto_aprobado,
+                COALESCE(SUM(CASE WHEN estado_pago = 'pendiente'
+                                  THEN total_pagado END), 0) AS monto_pendiente
+            FROM pago WHERE id_reserva = %s
+        """, (id_reserva,))
+        resumen = cursor.fetchone()
+        cursor.execute("""
+            SELECT COUNT(*) AS n_consumos,
+                   COALESCE(SUM(cantidad * precio_unitario), 0) AS monto_consumos
+            FROM consumo WHERE id_reserva = %s
+        """, (id_reserva,))
+        resumen.update(cursor.fetchone())
+        return resumen
+    except mysql.connector.Error as e:
+        print(f"Error al resumir la baja de la reserva: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def resumen_registros_reserva(id_reserva):
+    """
+    Cuenta los pagos y consumos de una reserva (solo lectura) para avisar al
+    administrador antes de eliminarla. Devuelve un dict o None si hay error.
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT COUNT(*) AS n_pagos,
+                   COALESCE(SUM(CASE WHEN estado_pago = 'aprobado'
+                                     THEN total_pagado END), 0) AS aprobado,
+                   COALESCE(SUM(CASE WHEN estado_pago = 'pendiente'
+                                     THEN total_pagado END), 0) AS pendiente
+            FROM pago WHERE id_reserva = %s
+        """, (id_reserva,))
+        res = cursor.fetchone()
+        cursor.execute("""
+            SELECT COUNT(*) AS n_consumos,
+                   COALESCE(SUM(cantidad * precio_unitario), 0) AS total_consumos
+            FROM consumo WHERE id_reserva = %s
+        """, (id_reserva,))
+        res.update(cursor.fetchone())
+        return res
+    except mysql.connector.Error as e:
+        print(f"Error al resumir registros de la reserva: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def eliminar_reserva(id_reserva, confirmado_con_registros=False,
+                     id_usuario=ID_USUARIO_ACTUAL):
+    """
+    Elimina una reserva y sus asociaciones. Usa conexión ADMIN.
+
+    Si la reserva tiene pagos o consumos, solo se elimina cuando el llamador
+    indica confirmado_con_registros=True (la interfaz ya le mostró el aviso al
+    administrador). En ese caso también se eliminan esos pagos y consumos.
+    TODA baja deja un registro permanente en auditoria_accion, dentro de la
+    misma transacción: si no se puede auditar, no se elimina nada.
+    """
     conexion = obtener_conexion_admin()
     if not conexion:
         return False, "No se pudo conectar como administrador."
 
     cursor = None
     try:
-        cursor = conexion.cursor()
+        cursor = conexion.cursor(dictionary=True)
 
-        # Verificar si hay pagos o consumos antes de eliminar
-        cursor.execute("SELECT COUNT(*) FROM pago WHERE id_reserva = %s", (id_reserva,))
-        if cursor.fetchone()[0] > 0:
-            return False, "No se puede eliminar: la reserva tiene pagos asociados."
+        cursor.execute("""
+            SELECT r.fecha_ingreso, r.fecha_salida, r.estado_reserva, r.precio_total,
+                   hu.nombre, hu.apellido, hu.dni
+            FROM reserva r
+            LEFT JOIN reserva_huesped rhu
+                   ON rhu.id_reserva = r.id_reserva AND rhu.rol = 'titular'
+            LEFT JOIN huesped hu ON hu.id_huesped = rhu.id_huesped
+            WHERE r.id_reserva = %s
+        """, (id_reserva,))
+        reserva = cursor.fetchone()
+        if not reserva:
+            return False, "La reserva no existe."
 
-        cursor.execute("SELECT COUNT(*) FROM consumo WHERE id_reserva = %s", (id_reserva,))
-        if cursor.fetchone()[0] > 0:
-            return False, "No se puede eliminar: la reserva tiene consumos asociados."
+        cursor.execute("""
+            SELECT COUNT(*) AS n,
+                   COALESCE(SUM(CASE WHEN estado_pago = 'aprobado'
+                                     THEN total_pagado END), 0) AS aprobado,
+                   COALESCE(SUM(CASE WHEN estado_pago = 'pendiente'
+                                     THEN total_pagado END), 0) AS pendiente
+            FROM pago WHERE id_reserva = %s
+        """, (id_reserva,))
+        pagos = cursor.fetchone()
+        cursor.execute("""
+            SELECT COUNT(*) AS n,
+                   COALESCE(SUM(cantidad * precio_unitario), 0) AS total
+            FROM consumo WHERE id_reserva = %s
+        """, (id_reserva,))
+        consumos = cursor.fetchone()
 
-        # Eliminar primero las asociaciones
+        if (pagos['n'] > 0 or consumos['n'] > 0) and not confirmado_con_registros:
+            return False, ("La reserva tiene pagos o consumos asociados. "
+                           "Debe confirmarse la eliminación explícitamente.")
+
+        detalle = (f"Reserva {reserva['estado_reserva']} del "
+                   f"{reserva['fecha_ingreso'].strftime('%d/%m/%Y')} al "
+                   f"{reserva['fecha_salida'].strftime('%d/%m/%Y')}, "
+                   f"precio total ${reserva['precio_total']}. "
+                   f"Pagos eliminados: {pagos['n']} "
+                   f"(aprobado ${pagos['aprobado']}, pendiente ${pagos['pendiente']}). "
+                   f"Consumos eliminados: {consumos['n']} (${consumos['total']}).")
+        titular = (f"{reserva['nombre']} {reserva['apellido']}"
+                   if reserva['nombre'] else None)
+
+        # 1. Registro de auditoría (primero: si falla, no se elimina nada)
+        cursor.execute("""
+            INSERT INTO auditoria_accion
+                (id_usuario, accion, entidad, id_entidad, titular, dni,
+                 fecha_ingreso, fecha_salida, monto, detalle)
+            VALUES (%s, 'ELIMINAR', 'reserva', %s, %s, %s, %s, %s, %s, %s)
+        """, (id_usuario, id_reserva, titular, reserva['dni'],
+              reserva['fecha_ingreso'], reserva['fecha_salida'],
+              pagos['aprobado'], detalle))
+
+        # 2. Desvincular consultas (la consulta se conserva, solo pierde el vínculo)
+        cursor.execute("UPDATE consulta SET id_reserva = NULL WHERE id_reserva = %s",
+                       (id_reserva,))
+
+        # 3. Eliminar registros dependientes y la reserva
+        cursor.execute("DELETE FROM pago WHERE id_reserva = %s", (id_reserva,))
+        cursor.execute("DELETE FROM consumo WHERE id_reserva = %s", (id_reserva,))
         cursor.execute("DELETE FROM reserva_habitacion WHERE id_reserva = %s", (id_reserva,))
         cursor.execute("DELETE FROM reserva_huesped WHERE id_reserva = %s", (id_reserva,))
         cursor.execute("DELETE FROM reserva WHERE id_reserva = %s", (id_reserva,))
 
         conexion.commit()
-        return True, "Reserva eliminada permanentemente."
+        return True, "Reserva eliminada. La acción quedó registrada en la auditoría."
 
+    except mysql.connector.ProgrammingError as e:
+        conexion.rollback()
+        if e.errno == 1146:  # tabla inexistente
+            return False, ("No se eliminó nada: falta la tabla de auditoría. "
+                           "Ejecute auditoria_mysql.sql en MySQL.")
+        return False, f"Acceso denegado por el SGBD: {e}"
     except mysql.connector.IntegrityError:
         conexion.rollback()
         return False, "No se puede eliminar: la reserva tiene registros asociados."
-    except mysql.connector.ProgrammingError as e:
-        conexion.rollback()
-        return False, f"Acceso denegado por el SGBD: {e}"
     except Exception as e:
         conexion.rollback()
         return False, f"Error inesperado: {e}"
@@ -834,6 +1062,8 @@ def eliminar_reserva(id_reserva):
         if cursor:
             cursor.close()
         cerrar_conexion(conexion)
+
+
 def listar_huespedes_para_combo():
     """
     Devuelve los huéspedes activos ordenados por fecha_creacion DESC
@@ -1077,6 +1307,150 @@ def listar_actividad_reciente(limite=5):
     except mysql.connector.Error as e:
         print(f"Error al listar actividad reciente: {e}")
         return []
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def listar_habitaciones_ocupadas(hoy=None):
+    """
+    Habitaciones ocupadas hoy: con reserva confirmada vigente (ingreso <= hoy < salida)
+    o marcadas manualmente como ocupadas. Incluye titular, fecha de check-out y
+    saldo pendiente de la reserva (vista v_saldo_reserva).
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
+
+    hoy = hoy or date.today()
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT h.id_habitacion, h.tipo_habitacion,
+                   act.id_reserva, act.fecha_salida,
+                   hu.nombre, hu.apellido, hu.dni,
+                   v.saldo_pendiente
+            FROM habitacion h
+            LEFT JOIN (
+                SELECT rh.id_habitacion, r.id_reserva, r.fecha_salida
+                FROM reserva_habitacion rh
+                INNER JOIN reserva r ON r.id_reserva = rh.id_reserva
+                WHERE r.estado_reserva = 'confirmado'
+                  AND r.fecha_ingreso <= %s
+                  AND r.fecha_salida > %s
+            ) act ON act.id_habitacion = h.id_habitacion
+            LEFT JOIN reserva_huesped rhu
+                   ON rhu.id_reserva = act.id_reserva AND rhu.rol = 'titular'
+            LEFT JOIN huesped hu ON hu.id_huesped = rhu.id_huesped
+            LEFT JOIN v_saldo_reserva v ON v.id_reserva = act.id_reserva
+            WHERE h.estado_habitacion <> 'mantenimiento'
+              AND (act.id_reserva IS NOT NULL OR h.estado_habitacion = 'ocupada')
+            ORDER BY act.fecha_salida IS NULL, act.fecha_salida, h.id_habitacion
+        """, (hoy, hoy))
+        return cursor.fetchall()
+    except mysql.connector.Error as e:
+        print(f"Error al listar habitaciones ocupadas: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def obtener_auditoria_titulares(hoy=None, dias=60):
+    """
+    Movimientos de los titulares en los últimos `dias` días (hasta hoy inclusive):
+    reservas registradas y modificadas, check-in, check-out, pagos y consumos.
+    Une varias tablas con UNION ALL. Devuelve filas crudas (sin formato) o None
+    si hubo un error.
+    Seguridad en dos capas: la interfaz pide la contraseña de administrador y la
+    consulta se ejecuta con el rol de administrador del SGBD (admin_gestarho).
+    """
+    conexion = obtener_conexion_admin()
+    if not conexion:
+        return None
+
+    hoy = hoy or date.today()
+    desde = hoy - timedelta(days=dias)
+
+    base = """
+        FROM reserva r
+        LEFT JOIN reserva_huesped rhu
+               ON rhu.id_reserva = r.id_reserva AND rhu.rol = 'titular'
+        LEFT JOIN huesped hu ON hu.id_huesped = rhu.id_huesped
+    """
+
+    def parte(fecha, orden, tipo, monto, joins="", usuario=False,
+              texto1="NULL", texto2="NULL", extra=""):
+        u_nombre = "u.nombre" if usuario else "NULL"
+        u_apellido = "u.apellido" if usuario else "NULL"
+        return f"""
+            SELECT {fecha} AS fecha, {orden} AS orden, '{tipo}' AS tipo,
+                   r.id_reserva AS id_reserva, hu.nombre AS nombre,
+                   hu.apellido AS apellido, hu.dni AS dni,
+                   {u_nombre} AS u_nombre, {u_apellido} AS u_apellido,
+                   {monto} AS monto, {texto1} AS texto1, {texto2} AS texto2,
+                   r.fecha_ingreso AS f_ingreso, r.fecha_salida AS f_salida,
+                   r.estado_reserva AS estado_reserva
+            {base} {joins}
+            WHERE {fecha} BETWEEN %s AND %s {extra}
+        """
+
+    partes = [
+        parte("r.fecha_creacion", 1, "reserva", "r.precio_total",
+              "LEFT JOIN usuario u ON u.id_usuario = r.id_usuario_creacion",
+              usuario=True),
+        parte("r.fecha_modificacion", 2, "modificacion", "r.precio_total"),
+        parte("r.fecha_ingreso", 3, "checkin", "0",
+              extra="AND r.estado_reserva <> 'cancelado'"),
+        parte("p.fecha_pago", 4, "pago", "p.total_pagado",
+              "INNER JOIN pago p ON p.id_reserva = r.id_reserva "
+              "LEFT JOIN usuario u ON u.id_usuario = p.id_usuario_registro",
+              usuario=True, texto1="p.metodo_pago", texto2="p.estado_pago"),
+        parte("c.fecha_registro", 5, "consumo", "c.cantidad * c.precio_unitario",
+              "INNER JOIN consumo c ON c.id_reserva = r.id_reserva "
+              "INNER JOIN concepto_consumo cc ON cc.id_concepto = c.id_concepto "
+              "LEFT JOIN usuario u ON u.id_usuario = c.id_usuario_registro",
+              usuario=True, texto1="cc.nombre", texto2="c.cantidad"),
+        parte("r.fecha_salida", 6, "checkout", "0",
+              extra="AND r.estado_reserva <> 'cancelado'"),
+    ]
+    sql = " UNION ALL ".join(partes)
+    parametros = []
+    for _ in partes:
+        parametros += [desde, hoy]
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute(sql, tuple(parametros))
+        filas = cursor.fetchall()
+        # Bajas registradas en auditoria_accion (si la tabla aún no existe, se omiten)
+        try:
+            cursor.execute("""
+                SELECT DATE(a.fecha_hora) AS fecha, 7 AS orden, 'eliminacion' AS tipo,
+                       a.id_entidad AS id_reserva, COALESCE(a.titular, '') AS nombre,
+                       '' AS apellido, a.dni AS dni,
+                       u.nombre AS u_nombre, u.apellido AS u_apellido,
+                       a.monto AS monto, a.detalle AS texto1, NULL AS texto2,
+                       COALESCE(a.fecha_ingreso, DATE(a.fecha_hora)) AS f_ingreso,
+                       COALESCE(a.fecha_salida, DATE(a.fecha_hora)) AS f_salida,
+                       'eliminado' AS estado_reserva
+                FROM auditoria_accion a
+                LEFT JOIN usuario u ON u.id_usuario = a.id_usuario
+                WHERE a.entidad = 'reserva' AND DATE(a.fecha_hora) BETWEEN %s AND %s
+            """, (desde, hoy))
+            filas += cursor.fetchall()
+        except mysql.connector.Error as e:
+            print(f"Aviso: no se leyó auditoria_accion ({e})")
+        filas.sort(key=lambda f: (f['fecha'], f['id_reserva'], f['orden']),
+                   reverse=True)
+        return filas
+    except mysql.connector.Error as e:
+        print(f"Error al obtener la auditoría: {e}")
+        return None
     finally:
         if cursor:
             cursor.close()
