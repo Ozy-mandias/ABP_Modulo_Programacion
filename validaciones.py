@@ -4,54 +4,60 @@ from datetime import datetime
 def validar_huesped(datos):
     """
     Valida los datos de un huésped antes de registrarlo o actualizarlo.
+    Cada mensaje indica el CAMPO y el TIPO de dato esperado.
     Retorna una tupla: (booleano_es_valido, lista_de_errores)
     """
     errores = []
 
-    # Validar Nombre
-    nombre = datos.get('nombre', '').strip()
+    def texto(clave):
+        # Los campos opcionales vacíos llegan como None: se tratan como ''
+        return (datos.get(clave) or '').strip()
+
+    # Nombre
+    nombre = texto('nombre')
     if not nombre:
-        errores.append("El nombre es obligatorio.")
+        errores.append("Nombre: falta completarlo (texto, mínimo 2 letras).")
     elif len(nombre) < 2:
-        errores.append("El nombre debe tener al menos 2 caracteres.")
+        errores.append("Nombre: debe ser texto de al menos 2 caracteres.")
 
-    # Validar Apellido
-    apellido = datos.get('apellido', '').strip()
+    # Apellido
+    apellido = texto('apellido')
     if not apellido:
-        errores.append("El apellido es obligatorio.")
+        errores.append("Apellido: falta completarlo (texto, mínimo 2 letras).")
     elif len(apellido) < 2:
-        errores.append("El apellido debe tener al menos 2 caracteres.")
+        errores.append("Apellido: debe ser texto de al menos 2 caracteres.")
 
-    # Validar DNI
-    dni = datos.get('dni', '').strip()
+    # DNI
+    dni = texto('dni')
     if not dni:
-        errores.append("El DNI es obligatorio.")
+        errores.append("DNI: falta completarlo (solo números, 7 a 9 dígitos, sin puntos).")
     elif not dni.isdigit():
-        errores.append("El DNI debe contener solo números, sin puntos ni espacios.")
+        errores.append("DNI: debe contener solo números, sin puntos ni espacios.")
     elif not (7 <= len(dni) <= 9):
-        errores.append("El DNI debe tener entre 7 y 9 dígitos.")
+        errores.append("DNI: debe tener entre 7 y 9 dígitos.")
 
-    # Validar Teléfono
-    telefono = datos.get('telefono', '').strip()
+    # Teléfono
+    telefono = texto('telefono')
     if not telefono:
-        errores.append("El teléfono es obligatorio.")
+        errores.append("Teléfono: falta completarlo (solo números, sin espacios ni guiones).")
     elif not telefono.isdigit():
-        errores.append("El teléfono debe contener solo números.")
+        errores.append("Teléfono: debe contener solo números, sin espacios ni guiones.")
 
-    # Validar Email (Es opcional, pero si se escribe debe ser válido)
-    email = datos.get('email', '').strip()
+    # Email (opcional, pero si se escribe debe ser válido)
+    email = texto('email')
     if email:
         patron_email = r'^[\w\.-]+@[\w\.-]+\.\w+$'
         if not re.match(patron_email, email):
-            errores.append("El formato del correo electrónico no es válido.")
+            errores.append("Email: formato inválido (ejemplo: nombre@correo.com).")
 
-    # Validar Fecha de Nacimiento (Es opcional, formato AAAA-MM-DD)
-    fecha_nac = datos.get('fecha_nacimiento', '').strip()
+    # Fecha de nacimiento (opcional, formato AAAA-MM-DD)
+    fecha_nac = texto('fecha_nacimiento')
     if fecha_nac:
         try:
             datetime.strptime(fecha_nac, '%Y-%m-%d')
         except ValueError:
-            errores.append("La fecha de nacimiento debe tener el formato AAAA-MM-DD (ejemplo: 1990-05-20).")
+            errores.append("Fecha de nacimiento: debe ser una fecha real con formato "
+                           "AAAA-MM-DD (ejemplo: 1990-05-20).")
 
     es_valido = len(errores) == 0
     return es_valido, errores
@@ -173,3 +179,21 @@ def validar_reserva(datos):
         errores.append(f"El estado debe ser uno de: {', '.join(estados_validos)}.")
 
     return len(errores) == 0, errores
+
+
+# ============================================================
+# FECHAS dd/mm/aaaa (campo con máscara)
+# ============================================================
+def parsear_fecha(texto):
+    """
+    Convierte 'dd/mm/aaaa' en un objeto date.
+    Devuelve None si el texto está incompleto o no es una fecha real.
+    """
+    texto = (texto or "").strip()
+    if not re.match(r'^\d{2}/\d{2}/\d{4}$', texto):
+        return None
+    try:
+        fecha = datetime.strptime(texto, "%d/%m/%Y").date()
+    except ValueError:
+        return None
+    return fecha if 2000 <= fecha.year <= 2100 else None

@@ -177,8 +177,8 @@ def abrir_formulario(parent, frame_formulario, contenedor, panel_busqueda,
         es_valido, errores = validar_huesped(datos_validar)
         if not es_valido:
             messagebox.showwarning(
-                "Datos inválidos",
-                "Corrija los siguientes errores:\n\n" +
+                "Faltan datos o son incorrectos",
+                "No se registró el huésped. Complete o corrija estos campos:\n\n" +
                 "\n".join(f"• {e}" for e in errores)
             )
             return
