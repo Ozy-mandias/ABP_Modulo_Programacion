@@ -13,7 +13,8 @@ from acceso_datos import (
     listar_huespedes_para_combo, listar_habitaciones_para_combo,
     obtener_habitacion_por_id
 )
-from validaciones import validar_reserva
+from validaciones import validar_reserva, parsear_fecha
+from componentes.campo_fecha import crear_campo_fecha
 from conexion import verificar_password_admin
 
 COLOR_FONDO = "white"
@@ -364,14 +365,14 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
                  bg=COLOR_PANEL, fg="red", font=FUENTE_TEXTO,
                  anchor="w").place(x=30, y=42, width=280, height=25)
 
-    tk.Label(panel, text="Fecha Ingreso / Salida (AAAA-MM-DD)", bg=COLOR_PANEL,
+    tk.Label(panel, text="Fecha Ingreso / Salida (dd/mm/aaaa)", bg=COLOR_PANEL,
              fg=COLOR_TEXTO, font=FUENTE_TEXTO).place(x=330, y=20)
-    entrada_fecha_ingreso = tk.Entry(panel, font=FUENTE_TEXTO, relief=tk.FLAT)
-    entrada_fecha_ingreso.place(x=330, y=42, width=120, height=25)
+    entrada_fecha_ingreso, var_fecha_ingreso = crear_campo_fecha(
+        panel, 330, 42, 120, fuente=FUENTE_TEXTO, relief=tk.FLAT)
     tk.Label(panel, text="—", bg=COLOR_PANEL, fg=COLOR_TEXTO,
              font=FUENTE_TEXTO).place(x=455, y=42)
-    entrada_fecha_salida = tk.Entry(panel, font=FUENTE_TEXTO, relief=tk.FLAT)
-    entrada_fecha_salida.place(x=470, y=42, width=120, height=25)
+    entrada_fecha_salida, var_fecha_salida = crear_campo_fecha(
+        panel, 470, 42, 120, fuente=FUENTE_TEXTO, relief=tk.FLAT)
 
     # --------- Fila 2: Habitación + Precio + Nro Personas ---------
     tk.Label(panel, text="Habitación", bg=COLOR_PANEL, fg=COLOR_TEXTO,
@@ -456,14 +457,14 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
 
     # --------- Rellenar fechas y personas en modo edición ---------
     if datos:
-        entrada_fecha_ingreso.insert(0, datos['fecha_ingreso'].strftime('%Y-%m-%d'))
-        entrada_fecha_salida.insert(0, datos['fecha_salida'].strftime('%Y-%m-%d'))
+        var_fecha_ingreso.set(datos['fecha_ingreso'].strftime('%d/%m/%Y'))
+        var_fecha_salida.set(datos['fecha_salida'].strftime('%d/%m/%Y'))
         entrada_personas.insert(0, str(datos['nro_personas']))
 
     # --------- Limpiar ---------
     def limpiar():
-        entrada_fecha_ingreso.delete(0, tk.END)
-        entrada_fecha_salida.delete(0, tk.END)
+        var_fecha_ingreso.set("")
+        var_fecha_salida.set("")
         entrada_personas.delete(0, tk.END)
         var_estado.set(ESTADOS_RESERVA[0])
         var_huesped.set("Seleccione un huésped")
@@ -474,10 +475,19 @@ def _crear_formulario(frame_formulario, refrescar, volver_a_filtros, id_reserva=
 
     # --------- Guardar ---------
     def guardar():
+        # Las fechas se escriben dd/mm/aaaa; se convierten a AAAA-MM-DD para la base
+        f_ingreso = parsear_fecha(var_fecha_ingreso.get())
+        f_salida = parsear_fecha(var_fecha_salida.get())
+        if f_ingreso is None or f_salida is None:
+            messagebox.showwarning(
+                "Fecha inválida",
+                "Fecha de ingreso y de salida: complete ambas con una fecha real "
+                "en formato dd/mm/aaaa (solo números, ejemplo: 25122026).")
+            return
         datos_validar = {
             'huesped': var_huesped.get().strip(),
-            'fecha_ingreso': entrada_fecha_ingreso.get().strip(),
-            'fecha_salida': entrada_fecha_salida.get().strip(),
+            'fecha_ingreso': f_ingreso.strftime('%Y-%m-%d'),
+            'fecha_salida': f_salida.strftime('%Y-%m-%d'),
             'habitacion': var_habitacion.get().strip(),
             'precio_noche': entrada_precio.get().strip(),
             'nro_personas': entrada_personas.get().strip(),
