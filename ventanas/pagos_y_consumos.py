@@ -19,7 +19,7 @@ def buscar_reserva_mock(criterio):
     """Simula la búsqueda de una reserva por N° de confirmación o por DNI"""
     return{
         "confirmacion":"12345",
-        "huesped":"Lautaro Valdez",
+        "huespede":"Lautaro Valdez",
         "habitacion":"15 (Suite)",
         "check_in":"07/10/2026",
         "check_out":"07/11/2026",
@@ -149,8 +149,9 @@ class PantallaPagosConsumos:
             self.tabla_pagos.heading(col, text=titulo)
             self.tabla_pagos.column(col, width=ancho, anchor="center")
         self.tabla_pagos.pack(fill=tk.X, padx=10)
+
         self.lbl_total_pagado = tk.Label(caja_pagos, text="Total Pagado: $0", font=FUENTE_TEXTO_BOLD,
-                        bg=COLOR_FONDO, fg=COLOR_NEGRO)
+                            bg=COLOR_FONDO, fg=COLOR_NEGRO)
         self.lbl_total_pagado.pack(anchor="e", padx=10, pady=(8, 5))
 
         tk.Button(
@@ -176,11 +177,11 @@ class PantallaPagosConsumos:
             self.tabla_consumos.heading(col, text=titulo)
             self.tabla_consumos.column(col, width=ancho, anchor="center")
         self.tabla_consumos.pack(fill=tk.X, padx=10)
-
+    
         self.lbl_total_consumos = tk.Label(caja_consumos, text="Total Consumos: $0",
                                             font=FUENTE_TEXTO_BOLD, bg=COLOR_FONDO, fg=COLOR_NEGRO)
         self.lbl_total_consumos.pack(anchor="e", padx=10, pady=(8, 5))
-
+    
         tk.Button(
             caja_consumos, text="Agregar Consumo", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO,
             fg="white", activebackground="#333333", activeforeground="white", bd=0,
@@ -239,7 +240,7 @@ class PantallaPagosConsumos:
         self.reserva = reserva
         self.lbl_detalle_titulo.config(text=f"DETALLE DE LA RESERVA #{reserva['confirmacion']}")
  
-        valores = [reserva["confirmacion"], reserva["huesped"], reserva["habitacion"],
+        valores = [reserva["confirmacion"], reserva["huespede"], reserva["habitacion"],
                    reserva["check_in"], reserva["check_out"]]
         for var, valor in zip(self.vars_detalle, valores):
             var.set(valor)

@@ -4,7 +4,7 @@ Contiene todas las funciones que ejecutan sentencias SQL
 sobre la base de datos MySQL.
 """
 
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 import mysql.connector
 from conexion import obtener_conexion, obtener_conexion_admin, cerrar_conexion
@@ -1455,3 +1455,218 @@ def obtener_auditoria_titulares(hoy=None, dias=60):
         if cursor:
             cursor.close()
         cerrar_conexion(conexion)
+        
+# ============================================================
+# CONSULTAS - CRUD
+# ============================================================
+def listar_consultas(filtro_texto=None, estado=None, fecha_desde=None, fecha_hasta=None):
+    """
+    Devuelve las consultas aplicando filtros opcionales.
+    Filtra por remitente/asunto (LIKE), estado exacto y rango de fechas.
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return []
+
+    sql = """
+        SELECT id_consulta, fecha, remitente, medio, asunto,
+               estado, id_reserva, id_usuario_asignado, fecha_creacion
+        FROM consulta
+        WHERE 1=1
+    """
+    parametros = []
+    if filtro_texto:
+        sql += " AND (remitente LIKE %s OR asunto LIKE %s)"
+        patron = f"%{filtro_texto}%"
+        parametros.extend([patron, patron])
+    if estado:
+        sql += " AND estado = %s"
+        parametros.append(estado)
+    if fecha_desde:
+        sql += " AND fecha >= %s"
+        parametros.append(fecha_desde)
+    if fecha_hasta:
+        sql += " AND fecha <= %s"
+        parametros.append(fecha_hasta)
+    sql += " ORDER BY fecha DESC, id_consulta DESC"
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute(sql, tuple(parametros))
+        return cursor.fetchall()
+    except mysql.connector.Error as e:
+        print(f"Error al listar consultas: {e}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def obtener_consulta_por_id(id_consulta):
+    """Devuelve los datos de una consulta por su ID."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
+
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id_consulta, fecha, remitente, medio, asunto,
+                   estado, id_reserva, id_usuario_asignado, fecha_creacion
+            FROM consulta
+            WHERE id_consulta = %s
+        """, (id_consulta,))
+        return cursor.fetchone()
+    except mysql.connector.Error as e:
+        print(f"Error al obtener consulta: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def insertar_consulta(fecha, remitente, medio, asunto, estado,
+                      id_reserva=None, id_usuario_asignado=None):
+    """
+    Inserta una consulta nueva.
+    Retorna (True, "mensaje") o (False, "mensaje de error").
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return False, "No se pudo conectar a la base de datos."
+
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            INSERT INTO consulta
+                (fecha, remitente, medio, asunto, estado,
+                 id_reserva, id_usuario_asignado, fecha_creacion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, CURDATE())
+        """, (fecha, remitente, medio, asunto, estado,
+              id_reserva, id_usuario_asignado))
+        conexion.commit()
+        return True, f"Consulta #{cursor.lastrowid} registrada correctamente."
+
+    except mysql.connector.IntegrityError as e:
+        conexion.rollback()
+        return False, f"Los datos no cumplen las restricciones de la base: {e.msg}"
+    except mysql.connector.Error as e:
+        conexion.rollback()
+        return False, f"Error de base de datos: {e}"
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def actualizar_consulta(id_consulta, fecha, remitente, medio, asunto, estado,
+                        id_reserva=None, id_usuario_asignado=None):
+    """
+    Actualiza una consulta existente.
+    Retorna (True, "mensaje") o (False, "mensaje de error").
+    """
+    conexion = obtener_conexion()
+    if not conexion:
+        return False, "No se pudo conectar a la base de datos."
+
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            UPDATE consulta
+            SET fecha = %s, remitente = %s, medio = %s, asunto = %s,
+                estado = %s, id_reserva = %s, id_usuario_asignado = %s
+            WHERE id_consulta = %s
+        """, (fecha, remitente, medio, asunto, estado,
+              id_reserva, id_usuario_asignado, id_consulta))
+        conexion.commit()
+        return True, "Consulta actualizada correctamente."
+
+    except mysql.connector.IntegrityError as e:
+        conexion.rollback()
+        return False, f"Los datos no cumplen las restricciones de la base: {e.msg}"
+    except mysql.connector.Error as e:
+        conexion.rollback()
+        return False, f"Error de base de datos: {e}"
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+def eliminar_consulta(id_consulta):
+    """
+    Elimina una consulta. Usa conexión ADMIN (recepcionista no tiene DELETE).
+    Retorna (True, "mensaje") o (False, "mensaje de error").
+    """
+    conexion = obtener_conexion_admin()
+    if not conexion:
+        return False, "No se pudo conectar como administrador."
+
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("DELETE FROM consulta WHERE id_consulta = %s",
+                       (id_consulta,))
+        conexion.commit()
+        return True, "Consulta eliminada correctamente."
+
+    except mysql.connector.IntegrityError:
+        conexion.rollback()
+        return False, "No se puede eliminar: la consulta tiene registros asociados."
+    except mysql.connector.ProgrammingError as e:
+        conexion.rollback()
+        return False, f"Acceso denegado por el SGBD: {e}"
+    except mysql.connector.Error as e:
+        conexion.rollback()
+        return False, f"Error de base de datos: {e}"
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+def validar_consulta(datos):
+    """
+    Valida los datos de una consulta.
+    Recibe un dict con: fecha, remitente, medio, asunto, estado.
+    Retorna (es_valido, lista_de_errores).
+    """
+    errores = []
+
+    # Remitente
+    remitente = (datos.get('remitente') or '').strip()
+    if not remitente:
+        errores.append("El remitente es obligatorio.")
+    elif len(remitente) > 100:
+        errores.append("El remitente no puede superar los 100 caracteres.")
+
+    # Asunto
+    asunto = (datos.get('asunto') or '').strip()
+    if not asunto:
+        errores.append("El asunto es obligatorio.")
+
+    # Medio (según CHECK de la BD: WhatsApp, Web, Telefono, Email)
+    medio = datos.get('medio')
+    medios_validos = ('WhatsApp', 'Web', 'Telefono', 'Email')
+    if medio not in medios_validos:
+        errores.append("El medio debe ser WhatsApp, Web, Telefono o Email.")
+
+    # Estado (según CHECK de la BD: Pendiente, Terminado, Archivado)
+    estado = datos.get('estado')
+    estados_validos = ('Pendiente', 'Terminado', 'Archivado')
+    if estado not in estados_validos:
+        errores.append("El estado debe ser Pendiente, Terminado o Archivado.")
+
+    # Fecha (formato AAAA-MM-DD)
+    fecha = (datos.get('fecha') or '').strip()
+    if not fecha:
+        errores.append("La fecha es obligatoria.")
+    else:
+        try:
+            datetime.strptime(fecha, "%Y-%m-%d")
+        except ValueError:
+            errores.append("La fecha debe tener formato AAAA-MM-DD (ej: 2026-10-22).")
+
+    return (len(errores) == 0, errores)

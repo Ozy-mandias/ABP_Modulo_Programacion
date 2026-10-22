@@ -197,3 +197,47 @@ def parsear_fecha(texto):
     except ValueError:
         return None
     return fecha if 2000 <= fecha.year <= 2100 else None
+
+def validar_consulta(datos):
+    """
+    Valida los datos de una consulta.
+    Recibe un dict con: fecha, remitente, medio, asunto, estado.
+    Retorna (es_valido, lista_de_errores).
+    """
+    errores = []
+
+    # Remitente
+    remitente = (datos.get('remitente') or '').strip()
+    if not remitente:
+        errores.append("El remitente es obligatorio.")
+    elif len(remitente) > 100:
+        errores.append("El remitente no puede superar los 100 caracteres.")
+
+    # Asunto
+    asunto = (datos.get('asunto') or '').strip()
+    if not asunto:
+        errores.append("El asunto es obligatorio.")
+
+    # Medio (según CHECK de la BD: WhatsApp, Web, Telefono, Email)
+    medio = datos.get('medio')
+    medios_validos = ('WhatsApp', 'Web', 'Telefono', 'Email')
+    if medio not in medios_validos:
+        errores.append("El medio debe ser WhatsApp, Web, Telefono o Email.")
+
+    # Estado (según CHECK de la BD: Pendiente, Terminado, Archivado)
+    estado = datos.get('estado')
+    estados_validos = ('Pendiente', 'Terminado', 'Archivado')
+    if estado not in estados_validos:
+        errores.append("El estado debe ser Pendiente, Terminado o Archivado.")
+
+    # Fecha (formato AAAA-MM-DD)
+    fecha = (datos.get('fecha') or '').strip()
+    if not fecha:
+        errores.append("La fecha es obligatoria.")
+    else:
+        try:
+            datetime.strptime(fecha, "%Y-%m-%d")
+        except ValueError:
+            errores.append("La fecha debe tener formato AAAA-MM-DD (ej: 2026-10-22).")
+
+    return (len(errores) == 0, errores)
