@@ -4,3 +4,4 @@ venv/
 .vscode/
 *.pyc
 probar_reserva.py
+.env

@@ -1,19 +1,19 @@
 """
-Módulo de conexión a la base de datos MySQL.
+Módulo de conexión a la base de datos MySQL de forma segura.
 GestARHO - Sistema de Gestión Hotelera.
 """
 
+import os
+from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
 
-# Contraseña que pide la aplicación antes de un borrado definitivo.
-# (Solo para desarrollo/prueba: en un sistema real no debe estar en el código.)
-PASSWORD_ADMIN_APP = "Admin2026!"
-
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
 
 def verificar_password_admin(password):
-    """True si la contraseña ingresada coincide con la de administrador de la app."""
-    return password == PASSWORD_ADMIN_APP
+    """True si la contraseña ingresada coincide con la de administrador de la app desde el entorno."""
+    return password == os.getenv("APP_SUPER_ADMIN_KEY")
 
 
 def obtener_conexion():
@@ -24,11 +24,11 @@ def obtener_conexion():
     """
     try:
         conexion = mysql.connector.connect(
-            host='localhost',
-            port=3306,
-            user='recepcionista_user',
-            password='Recep2026!',
-            database='gestarho'
+            host=os.getenv("DB_HOST"),
+            port=int(os.getenv("DB_PORT", 3306)),
+            user=os.getenv("DB_USER_RECEP"),
+            password=os.getenv("DB_PASS_RECEP"),
+            database=os.getenv("DB_NAME")
         )
         return conexion
     except Error as e:
@@ -43,11 +43,11 @@ def obtener_conexion_admin():
     """
     try:
         conexion = mysql.connector.connect(
-            host='localhost',
-            port=3306,
-            user='admin_user',
-            password='Admin2026!',
-            database='gestarho'
+            host=os.getenv("DB_HOST"),
+            port=int(os.getenv("DB_PORT", 3306)),
+            user=os.getenv("DB_USER_ADMIN"),
+            password=os.getenv("DB_PASS_ADMIN"),
+            database=os.getenv("DB_NAME")
         )
         return conexion
     except Error as e:
