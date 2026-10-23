@@ -7,7 +7,7 @@
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -16,12 +16,40 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Current Database: `gestarho`
+-- Table structure for table `auditoria_accion`
 --
 
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `gestarho` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+DROP TABLE IF EXISTS `auditoria_accion`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auditoria_accion` (
+  `id_auditoria` int NOT NULL AUTO_INCREMENT,
+  `fecha_hora` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `id_usuario` int NOT NULL,
+  `accion` varchar(40) NOT NULL,
+  `entidad` varchar(30) NOT NULL,
+  `id_entidad` int NOT NULL,
+  `titular` varchar(150) DEFAULT NULL,
+  `dni` varchar(20) DEFAULT NULL,
+  `fecha_ingreso` date DEFAULT NULL,
+  `fecha_salida` date DEFAULT NULL,
+  `monto` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `detalle` text NOT NULL,
+  PRIMARY KEY (`id_auditoria`),
+  KEY `idx_auditoria_fecha` (`fecha_hora`),
+  KEY `fk_auditoria_usuario` (`id_usuario`),
+  CONSTRAINT `fk_auditoria_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-USE `gestarho`;
+--
+-- Dumping data for table `auditoria_accion`
+--
+
+LOCK TABLES `auditoria_accion` WRITE;
+/*!40000 ALTER TABLE `auditoria_accion` DISABLE KEYS */;
+/*!40000 ALTER TABLE `auditoria_accion` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `concepto_consumo`
@@ -147,7 +175,7 @@ CREATE TABLE `habitacion` (
   CONSTRAINT `chk_hab_estado` CHECK ((`estado_habitacion` in (_utf8mb4'mantenimiento',_utf8mb4'disponible',_utf8mb4'ocupada'))),
   CONSTRAINT `chk_hab_precio` CHECK ((`precio_noche` >= 0)),
   CONSTRAINT `chk_hab_tipo` CHECK ((`tipo_habitacion` in (_utf8mb4'familiar',_utf8mb4'simple',_utf8mb4'doble',_utf8mb4'suite')))
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -156,7 +184,7 @@ CREATE TABLE `habitacion` (
 
 LOCK TABLES `habitacion` WRITE;
 /*!40000 ALTER TABLE `habitacion` DISABLE KEYS */;
-INSERT INTO `habitacion` VALUES (1,'simple',2,25000.00,'disponible'),(2,'doble',2,45000.00,'disponible'),(3,'doble',3,48000.00,'ocupada'),(4,'suite',4,85000.00,'disponible'),(5,'suite',5,95000.00,'mantenimiento'),(6,'familiar',6,120000.00,'disponible'),(7,'familiar',8,140000.00,'disponible'),(8,'simple',2,25000.00,'disponible'),(9,'doble',2,45000.00,'disponible'),(10,'suite',4,85000.00,'disponible');
+INSERT INTO `habitacion` VALUES (1,'simple',2,25000.00,'disponible'),(2,'doble',2,45000.00,'disponible'),(3,'doble',3,48000.00,'disponible'),(4,'suite',4,85000.00,'disponible'),(5,'suite',5,95000.00,'mantenimiento'),(6,'familiar',6,120000.00,'disponible'),(7,'familiar',8,140000.00,'disponible'),(8,'simple',2,25000.00,'disponible'),(9,'doble',2,45000.00,'disponible'),(10,'suite',4,85000.00,'disponible'),(11,'simple',2,100000.00,'disponible');
 /*!40000 ALTER TABLE `habitacion` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -188,7 +216,7 @@ CREATE TABLE `huesped` (
   KEY `idx_huesped_apellido` (`apellido`,`nombre`),
   CONSTRAINT `fk_huesped_usuario` FOREIGN KEY (`id_usuario_registro`) REFERENCES `usuario` (`id_usuario`),
   CONSTRAINT `chk_huesped_activo` CHECK ((`activo` in (0,1)))
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -197,7 +225,7 @@ CREATE TABLE `huesped` (
 
 LOCK TABLES `huesped` WRITE;
 /*!40000 ALTER TABLE `huesped` DISABLE KEYS */;
-INSERT INTO `huesped` VALUES (1,'Marcos','Rivas','30111222','1983-04-12','Argentina','3515550001','marcos.rivas@mail.test','Av. Colón 1200, Córdoba',3,'2026-10-15',NULL,1),(2,'Sofía','Ledesma','32444555','1986-09-30','Argentina','3515550002','sofia.ledesma@mail.test','Bv. San Juan 450, Córdoba',3,'2026-10-15',NULL,1),(3,'Julián','Herrera','28999000','1981-01-22','Argentina','3515550003',NULL,NULL,4,'2026-10-15',NULL,1),(4,'Camila','Soria','35123456','1991-06-05','Argentina','3515550004','camila.soria@mail.test','Av. Vélez Sarsfield 800, Córdoba',4,'2026-10-15',NULL,1),(5,'Tomás','Aguirre','40111333','1997-11-18','Argentina','3515550005',NULL,NULL,4,'2026-10-15',NULL,1),(6,'Valeria','Bustos','33222111','1988-02-14','Argentina','3515550006','valeria.bustos@mail.test','Mendoza 321, Rosario',3,'2026-10-15',NULL,1),(7,'Nicolás','Paz','37555666','1993-07-27','Argentina','3515550007',NULL,'Belgrano 90, Villa María',5,'2026-10-15',NULL,1),(8,'Lucas','Ferreya','29888777','1982-12-03','Argentina','3515550008','lucas.ferreya@mail.test','San Martín 1500, Río Cuarto',5,'2026-10-15',NULL,1),(9,'Martina','Gutiérrez','41222333','1999-03-09','Uruguay','3515550009','martina.gutierrez@mail.test',NULL,3,'2026-10-15',NULL,1),(10,'Diego','Castro','31666777','1984-08-21','Chile','3515550010',NULL,NULL,2,'2026-10-15',NULL,1);
+INSERT INTO `huesped` VALUES (1,'Marcos','Rivas','30111222','1983-04-12','Argentina','3515550001','marcos.rivas@mail.test','Av. Colón 1200, Córdoba',3,'2026-10-15',NULL,1),(2,'Sofía','Ledesma','32444555','1986-09-30','Argentina','3515550002','sofia.ledesma@mail.test','Bv. San Juan 450, Córdoba',3,'2026-10-15',NULL,1),(3,'Julián','Herrera','28999000','1981-01-22','Argentina','3515550003',NULL,NULL,4,'2026-10-15',NULL,1),(4,'Camila','Soria','35123456','1991-06-05','Argentina','3515550004','camila.soria@mail.test','Av. Vélez Sarsfield 800, Córdoba',4,'2026-10-15',NULL,1),(5,'Tomás','Aguirre','40111333','1997-11-18','Argentina','3515550005',NULL,'tunsri',4,'2026-10-15','2026-10-18',1),(6,'Valeria','Bustos','33222111','1988-02-14','Argentina','3515550006','valeria.bustos@mail.test','Mendoza 321, Rosario',3,'2026-10-15','2026-10-16',0),(7,'Nicolás','Paz','37555666','1993-07-27','Argentina','3515550007',NULL,'Belgrano 90, Villa María',5,'2026-10-15',NULL,1),(8,'Lucas','Ferreya','29888777','1982-12-03','Argentina','3515550008','lucas.ferreya@mail.test','San Martín 1500, Río Cuarto',5,'2026-10-15',NULL,1),(9,'Martina','Gutiérrez','41222333','1999-03-09','Uruguay','3515550009','martina.gutierrez@mail.test',NULL,3,'2026-10-15',NULL,1),(10,'Diego','Castro','31666777','1984-08-21','Chile','3515550010',NULL,NULL,2,'2026-10-15',NULL,1),(11,'Test','Prueba','99999999',NULL,NULL,'351-9999999','test@mail.com',NULL,1,'2026-10-16','2026-10-16',0),(12,'carlos','uyaba','2539232352',NULL,NULL,'231','123',NULL,1,'2026-10-16','2026-10-16',0),(19,'juan','tomas','39232333',NULL,NULL,'1231232133','au@gmail.com',NULL,1,'2026-10-16','2026-10-16',0),(23,'adrian','alcarez','25505221',NULL,NULL,'3535088497','adrian@gmail.com',NULL,1,'2026-10-16',NULL,1),(28,'Esteban','Aviles','30252562',NULL,NULL,'353656568','a@gmail.com',NULL,1,'2026-10-21',NULL,1);
 /*!40000 ALTER TABLE `huesped` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -267,7 +295,7 @@ CREATE TABLE `reserva` (
   CONSTRAINT `chk_reserva_fechas` CHECK ((`fecha_ingreso` < `fecha_salida`)),
   CONSTRAINT `chk_reserva_personas` CHECK ((`nro_personas` > 0)),
   CONSTRAINT `chk_reserva_precio` CHECK ((`precio_total` >= 0))
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -276,9 +304,44 @@ CREATE TABLE `reserva` (
 
 LOCK TABLES `reserva` WRITE;
 /*!40000 ALTER TABLE `reserva` DISABLE KEYS */;
-INSERT INTO `reserva` VALUES (1,'2026-09-22','2026-10-01','2026-10-04',2,75000.00,'confirmado',1,NULL),(2,'2026-09-25','2026-10-02','2026-10-05',2,135000.00,'confirmado',2,NULL),(3,'2026-09-28','2026-10-05','2026-10-07',4,170000.00,'confirmado',1,NULL),(4,'2026-09-29','2026-10-06','2026-10-09',5,345000.00,'confirmado',2,NULL),(5,'2026-10-05','2026-10-07','2026-10-08',2,25000.00,'pendiente',1,NULL),(6,'2026-10-01','2026-11-10','2026-11-12',2,90000.00,'cancelado',2,NULL),(7,'2026-10-02','2026-10-10','2026-10-13',6,420000.00,'confirmado',3,NULL),(8,'2026-10-06','2026-10-15','2026-10-18',3,255000.00,'confirmado',4,NULL),(9,'2026-10-12','2026-10-20','2026-10-22',4,100000.00,'pendiente',5,NULL),(10,'2026-10-01','2026-10-12','2026-10-14',2,90000.00,'cancelado',2,NULL);
+INSERT INTO `reserva` VALUES (1,'2026-09-22','2026-10-01','2026-10-04',2,75000.00,'confirmado',1,NULL),(2,'2026-09-25','2026-10-02','2026-10-05',2,135000.00,'confirmado',2,NULL),(3,'2026-09-28','2026-10-05','2026-10-07',4,170000.00,'confirmado',1,NULL),(4,'2026-09-29','2026-10-06','2026-10-09',5,345000.00,'confirmado',2,NULL),(5,'2026-10-05','2026-10-07','2026-10-08',2,25000.00,'pendiente',1,NULL),(6,'2026-10-01','2026-11-10','2026-11-12',2,90000.00,'cancelado',2,NULL),(7,'2026-10-02','2026-10-10','2026-10-13',6,420000.00,'confirmado',3,NULL),(8,'2026-10-06','2026-10-15','2026-10-18',3,255000.00,'confirmado',4,NULL),(9,'2026-10-12','2026-10-20','2026-10-22',4,100000.00,'pendiente',5,NULL),(10,'2026-10-01','2026-10-12','2026-10-14',2,90000.00,'cancelado',2,NULL),(11,'2026-10-17','2026-10-18','2026-10-25',3,336000.00,'confirmado',1,NULL),(12,'2026-10-18','2026-12-24','2026-12-25',2,25000.00,'confirmado',1,NULL),(13,'2026-10-18','2026-12-24','2026-12-25',2,25000.00,'confirmado',1,NULL),(14,'2026-10-21','2026-10-21','2026-10-28',2,700000.00,'confirmado',1,NULL);
 /*!40000 ALTER TABLE `reserva` ENABLE KEYS */;
 UNLOCK TABLES;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_no_doble_reserva_fechas` BEFORE UPDATE ON `reserva` FOR EACH ROW BEGIN
+    DECLARE v_conflicto INT;
+
+    IF NEW.estado_reserva <> 'cancelado' THEN
+        SELECT COUNT(*) INTO v_conflicto
+        FROM reserva_habitacion mia
+        INNER JOIN reserva_habitacion otra
+                ON otra.id_habitacion = mia.id_habitacion
+               AND otra.id_reserva <> mia.id_reserva
+        INNER JOIN reserva r ON r.id_reserva = otra.id_reserva
+        WHERE mia.id_reserva = NEW.id_reserva
+          AND r.estado_reserva <> 'cancelado'
+          AND r.fecha_ingreso < NEW.fecha_salida
+          AND r.fecha_salida  > NEW.fecha_ingreso;
+
+        IF v_conflicto > 0 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La habitación ya está reservada en ese rango de fechas';
+        END IF;
+    END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `reserva_habitacion`
@@ -305,9 +368,75 @@ CREATE TABLE `reserva_habitacion` (
 
 LOCK TABLES `reserva_habitacion` WRITE;
 /*!40000 ALTER TABLE `reserva_habitacion` DISABLE KEYS */;
-INSERT INTO `reserva_habitacion` VALUES (1,1,25000.00),(2,2,45000.00),(3,4,85000.00),(4,6,115000.00),(5,8,25000.00),(6,9,45000.00),(7,7,140000.00),(8,10,85000.00),(9,1,25000.00),(9,8,25000.00),(10,2,45000.00);
+INSERT INTO `reserva_habitacion` VALUES (1,1,25000.00),(2,2,45000.00),(3,4,85000.00),(4,6,115000.00),(5,8,25000.00),(6,9,45000.00),(7,7,140000.00),(8,10,85000.00),(9,1,25000.00),(9,8,25000.00),(10,2,45000.00),(11,3,48000.00),(12,1,25000.00),(13,1,25000.00),(14,11,100000.00);
 /*!40000 ALTER TABLE `reserva_habitacion` ENABLE KEYS */;
 UNLOCK TABLES;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_no_doble_reserva` BEFORE INSERT ON `reserva_habitacion` FOR EACH ROW BEGIN
+    DECLARE v_conflicto INT;
+
+    SELECT COUNT(*) INTO v_conflicto
+    FROM reserva_habitacion rh
+    INNER JOIN reserva r  ON rh.id_reserva = r.id_reserva
+    INNER JOIN reserva rn ON rn.id_reserva = NEW.id_reserva
+    WHERE rh.id_habitacion = NEW.id_habitacion
+      AND rh.id_reserva <> NEW.id_reserva
+      AND r.estado_reserva  <> 'cancelado'
+      AND rn.estado_reserva <> 'cancelado'
+      AND r.fecha_ingreso < rn.fecha_salida
+      AND r.fecha_salida  > rn.fecha_ingreso;
+
+    IF v_conflicto > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La habitación ya está reservada en ese rango de fechas';
+    END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_no_doble_reserva_upd` BEFORE UPDATE ON `reserva_habitacion` FOR EACH ROW BEGIN
+    DECLARE v_conflicto INT;
+
+    SELECT COUNT(*) INTO v_conflicto
+    FROM reserva_habitacion rh
+    INNER JOIN reserva r  ON rh.id_reserva = r.id_reserva
+    INNER JOIN reserva rn ON rn.id_reserva = NEW.id_reserva
+    WHERE rh.id_habitacion = NEW.id_habitacion
+      AND rh.id_reserva <> NEW.id_reserva
+      AND r.estado_reserva  <> 'cancelado'
+      AND rn.estado_reserva <> 'cancelado'
+      AND r.fecha_ingreso < rn.fecha_salida
+      AND r.fecha_salida  > rn.fecha_ingreso;
+
+    IF v_conflicto > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La habitación ya está reservada en ese rango de fechas';
+    END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `reserva_huesped`
@@ -335,7 +464,7 @@ CREATE TABLE `reserva_huesped` (
 
 LOCK TABLES `reserva_huesped` WRITE;
 /*!40000 ALTER TABLE `reserva_huesped` DISABLE KEYS */;
-INSERT INTO `reserva_huesped` VALUES (1,1,'titular','2026-09-22'),(1,2,'acompanante','2026-09-22'),(2,6,'titular','2026-09-25'),(3,3,'titular','2026-09-28'),(3,7,'acompanante','2026-09-28'),(4,4,'titular','2026-09-29'),(4,5,'acompanante','2026-09-29'),(5,10,'titular','2026-10-05'),(6,1,'titular','2026-10-01'),(7,6,'acompanante','2026-10-02'),(7,8,'titular','2026-10-02'),(7,9,'acompanante','2026-10-02'),(8,1,'acompanante','2026-10-06'),(8,2,'titular','2026-10-06'),(9,4,'acompanante','2026-10-12'),(9,9,'titular','2026-10-12'),(10,7,'titular','2026-10-01');
+INSERT INTO `reserva_huesped` VALUES (1,1,'titular','2026-09-22'),(1,2,'acompanante','2026-09-22'),(2,6,'titular','2026-09-25'),(3,3,'titular','2026-09-28'),(3,7,'acompanante','2026-09-28'),(4,4,'titular','2026-09-29'),(4,5,'acompanante','2026-09-29'),(5,10,'titular','2026-10-05'),(6,1,'titular','2026-10-01'),(7,6,'acompanante','2026-10-02'),(7,8,'titular','2026-10-02'),(7,9,'acompanante','2026-10-02'),(8,1,'acompanante','2026-10-06'),(8,2,'titular','2026-10-06'),(9,4,'acompanante','2026-10-12'),(9,9,'titular','2026-10-12'),(10,7,'titular','2026-10-01'),(11,23,'titular','2026-10-17'),(12,23,'titular','2026-10-18'),(13,2,'titular','2026-10-18'),(14,28,'titular','2026-10-21');
 /*!40000 ALTER TABLE `reserva_huesped` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -392,10 +521,12 @@ SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = @saved_cs_client;
 
 --
--- Current Database: `gestarho`
+-- Dumping events for database 'gestarho'
 --
 
-USE `gestarho`;
+--
+-- Dumping routines for database 'gestarho'
+--
 
 --
 -- Final view structure for view `v_saldo_reserva`
@@ -424,4 +555,4 @@ USE `gestarho`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-15 23:39:08
+-- Dump completed on 2026-10-23 12:07:40
