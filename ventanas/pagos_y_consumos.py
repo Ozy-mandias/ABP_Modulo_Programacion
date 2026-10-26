@@ -9,6 +9,8 @@ COLOR_BORDE = "#5b9bd5"
 COLOR_FONDO = "white"
 COLOR_GRIS_CLARO = "#f2f2f2"
 COLOR_NEGRO = "black"
+METODOS_PAGO = ("Efectivo", "Transferencia", "Tarjeta")
+PLACEHOLDER_BUSQUEDA = "# De confirmación o DNI"
 
 FUENTE_TITULO = ("Aldrich", 20, "bold")
 FUENTE_SUBTITULO = ("Aldrich", 12, "bold")
@@ -17,6 +19,8 @@ FUENTE_TEXTO_BOLD = ("Arial", 10, "bold")
 
 def buscar_reserva_mock(criterio):
     """Simula la búsqueda de una reserva por N° de confirmación o por DNI"""
+    if criterio not in ("", "12345"):
+        return None
     return{
         "confirmacion":"12345",
         "huespede":"Lautaro Valdez",
@@ -83,7 +87,7 @@ class PantallaPagosConsumos:
         fila.pack(fill=tk.X, pady=(8, 0))
 
         self.entry_busqueda = tk.Entry(fila, font=FUENTE_TEXTO, fg="#999999")
-        self.entry_busqueda.insert(0, "# De confirmación o DNI")
+        self.entry_busqueda.insert(0, PLACEHOLDER_BUSQUEDA)
         self.entry_busqueda.bind("<FocusIn>", self._limpiar_placeholder)
         self.entry_busqueda.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
 
@@ -94,7 +98,7 @@ class PantallaPagosConsumos:
 
 
     def _limpiar_placeholder(self, event):
-        if self.entry_busqueda.get() == "# De confirmación o DNI":
+        if self.entry_busqueda.get() == PLACEHOLDER_BUSQUEDA:
             self.entry_busqueda.delete(0, tk.END)
             self.entry_busqueda.config(fg=COLOR_NEGRO)
 
@@ -286,7 +290,7 @@ class PantallaPagosConsumos:
     # ---------------------------------------------------------- callbacks
     def _on_buscar(self):
         criterio = self.entry_busqueda.get().strip()
-        if not criterio or criterio == "# De confirmación o DNI":
+        if not criterio or criterio == PLACEHOLDER_BUSQUEDA:
             messagebox.showwarning("Buscar Reserva", "Ingresá un número de confirmación o DNI.")
             return
         # TODO: reemplazar por consulta real a la base de datos (tabla RESERVAS)
@@ -301,7 +305,7 @@ class PantallaPagosConsumos:
             return
         self._abrir_dialogo_generico(
             titulo="Agregar Pago",
-            campos=[("Monto", "monto"), ("Método (Efectivo/Transferencia/Tarjeta)", "metodo")],
+            campos=[("Monto", "monto"), ("Método de pago", "metodo", METODOS_PAGO)],
             al_guardar=self._guardar_pago
         )
  
@@ -311,7 +315,13 @@ class PantallaPagosConsumos:
         except ValueError:
             messagebox.showerror("Agregar Pago", "El monto debe ser un número.")
             return False
-        metodo = valores["metodo"].strip() or "Efectivo"
+        if monto <= 0:
+            messagebox.showerror("Agregar pago", "El monto debe ser mayor a 0.")
+            return False
+        metodo = valores["metodo"].strip() 
+        if metodo not in METODOS_PAGO:
+            messagebox.showerror("Agregar pago", "Elegí un método de pago.")
+            return False
         self.reserva["pagos"].append({
             "fecha": date.today().strftime("%d/%m/%Y"),
             "metodo": metodo,
@@ -336,6 +346,9 @@ class PantallaPagosConsumos:
         except ValueError:
             messagebox.showerror("Agregar Consumo", "Cantidad y precio deben ser numéricos.")
             return False
+        if cantidad <= 0 or precio <= 0:
+            messagebox.showerror("Agregar Consumo", "Cantidad y precio deben ser mayores a 0.")
+            return False
         concepto = valores["concepto"].strip()
         if not concepto:
             messagebox.showerror("Agregar Consumo", "El concepto es obligatorio.")
@@ -357,19 +370,26 @@ class PantallaPagosConsumos:
         ventana.grab_set()
  
         entradas = {}
-        for i, (etiqueta, clave) in enumerate(campos):
+        for i, campo in enumerate(campos):
+            etiqueta, clave = campo[0], campo[1]
+            opciones = campo[2] if len(campo) > 2 else None
+
             tk.Label(ventana, text=etiqueta, font=FUENTE_TEXTO, bg=COLOR_FONDO).grid(
                 row=i, column=0, sticky="w", padx=10, pady=8
             )
-            entry = tk.Entry(ventana, font=FUENTE_TEXTO)
-            entry.grid(row=i, column=1, padx=10, pady=8)
-            entradas[clave] = entry
+            if opciones:
+                widget = ttk.Combobox(ventana, values=opciones, state="readonly", font=FUENTE_TEXTO)
+            else:
+                widget = tk.Entry(ventana, font = FUENTE_TEXTO)
+            widget.grid(row=i, column=1, padx=10,pady=8)
+            entradas[clave] = widget
  
         def guardar():
-            valores = {clave: entry.get() for clave, entry in entradas.items()}
+            valores = {clave: w.get() for clave, w in entradas.items()}
             if al_guardar(valores):
                 ventana.destroy()
- 
+
+
         tk.Button(
             ventana, text="Guardar", font=FUENTE_TEXTO_BOLD, bg=COLOR_NEGRO, fg="white",
             activebackground="#333333", activeforeground="white", bd=0, command=guardar
