@@ -1,8 +1,20 @@
 #Pantalla de Pagos y Consumos
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import date
+
+
+# Importamos las funciones reales de la base de datos
+from acceso_datos import (
+    obtener_cuenta_por_dni_o_reserva, 
+    insertar_pago_bd, 
+    insertar_consumo_bd
+)
 
 COLOR_TEXTO = "#434343"
 COLOR_BORDE = "#5b9bd5"
@@ -15,36 +27,10 @@ FUENTE_SUBTITULO = ("Aldrich", 12, "bold")
 FUENTE_TEXTO = ("Arial", 10) 
 FUENTE_TEXTO_BOLD = ("Arial", 10, "bold")
 
-def buscar_reserva_mock(criterio):
-    """Simula la búsqueda de una reserva por N° de confirmación o por DNI"""
-    return{
-        "confirmacion":"12345",
-        "huespede":"Lautaro Valdez",
-        "habitacion":"15 (Suite)",
-        "check_in":"07/10/2026",
-        "check_out":"07/11/2026",
-        "total_estadia":250250,
-        "pagos":[
-            {"fecha": "3/11/2026", "metodo": "Transferencia", "monto": 104000},
-            {"fecha": "24/10/2026", "metodo": "Transferencia", "monto": 24000},
-            {"fecha": "15/10/2026", "metodo": "Transferencia", "monto": 2456},
-            {"fecha": "14/10/2026", "metodo": "Efectivo", "monto": 75000},
-        ],
-        "consumos": [
-            {"concepto": "Cochera", "cantidad": 3, "precio_unitario": 10000},
-            {"concepto": "Frigobar", "cantidad": 2, "precio_unitario": 5000},
-            {"concepto": "Lavandería", "cantidad": 1, "precio_unitario": 15000},
-        ]
-
-    }
-
-
 def formato_moneda(monto):
     return f"${monto:,.0f}".replace(",", ".")
 
-
 #Clase principal de la pantalla
-
 class PantallaPagosConsumos:
     def __init__(self,contenedor):
         self.contenedor = contenedor
@@ -59,9 +45,8 @@ class PantallaPagosConsumos:
         self._crear_pagos_y_consumos()
         self._crear_resumen()
 
-        self._cargar_reserva(buscar_reserva_mock("")) 
-
-        #Interfaz de Usuario
+        # Ya no cargamos el mock, arranca vacío hasta que el usuario busque
+        # self._cargar_reserva(buscar_reserva_mock("")) 
 
     def _crear_titulo(self):
         tk.Label(
@@ -92,12 +77,10 @@ class PantallaPagosConsumos:
                         activeforeground="white", bd=0, padx=20,command=self._on_buscar
                         ).pack(side=tk.LEFT, padx=(10, 0))
 
-
     def _limpiar_placeholder(self, event):
         if self.entry_busqueda.get() == "# De confirmación o DNI":
             self.entry_busqueda.delete(0, tk.END)
             self.entry_busqueda.config(fg=COLOR_NEGRO)
-
 
     def _crear_detalle_reserva(self):
         self.caja_detalle = tk.Frame(self.frame, bg=COLOR_FONDO,
@@ -105,7 +88,7 @@ class PantallaPagosConsumos:
         self.caja_detalle.pack(fill=tk.X, pady=(0, 15))
  
         self.lbl_detalle_titulo = tk.Label(
-        self.caja_detalle, text="DETALLE DE LA RESERVA",
+        self.caja_detalle, text="DETALLE DE LA RESERVA (Busque una para comenzar)",
         font=FUENTE_SUBTITULO, bg=COLOR_FONDO, fg=COLOR_NEGRO
         )
         self.lbl_detalle_titulo.pack(anchor="w", padx=15, pady=(10, 5))
@@ -132,19 +115,14 @@ class PantallaPagosConsumos:
         fila.columnconfigure(0, weight=1)
         fila.columnconfigure(1, weight=1)
 
-
-    #Historial de Pagos
-
+        # --- Historial de Pagos ---
         caja_pagos = tk.Frame(fila, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE, highlightthickness=1)
         caja_pagos.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
         tk.Label(caja_pagos, text="Historial de Pagos", font=FUENTE_SUBTITULO,
                     bg=COLOR_FONDO, fg=COLOR_NEGRO).pack(pady=(10, 5))
     
-        self.tabla_pagos = ttk.Treeview(
-            caja_pagos, columns=("fecha", "metodo", "monto"),
-            show="headings", height=5
-            )
+        self.tabla_pagos = ttk.Treeview(caja_pagos, columns=("fecha", "metodo", "monto"), show="headings", height=5)
         for col, titulo, ancho in [("fecha", "Fecha", 90), ("metodo", "Método", 110), ("monto", "Monto", 90)]:
             self.tabla_pagos.heading(col, text=titulo)
             self.tabla_pagos.column(col, width=ancho, anchor="center")
@@ -160,19 +138,14 @@ class PantallaPagosConsumos:
             command=self._abrir_dialogo_pago
         ).pack(pady=(0, 12))
 
-    #Consumos extra
-
-        caja_consumos = tk.Frame(fila, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE,
-                    highlightthickness=1)
+        # --- Consumos extra ---
+        caja_consumos = tk.Frame(fila, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE, highlightthickness=1)
         caja_consumos.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
     
         tk.Label(caja_consumos, text="Consumos Extras", font=FUENTE_SUBTITULO,
                     bg=COLOR_FONDO, fg=COLOR_NEGRO).pack(pady=(10, 5))
     
-        self.tabla_consumos = ttk.Treeview(
-            caja_consumos, columns=("concepto", "cantidad", "total"),
-            show="headings", height=5
-        )
+        self.tabla_consumos = ttk.Treeview(caja_consumos, columns=("concepto", "cantidad", "total"), show="headings", height=5)
         for col, titulo, ancho in [("concepto", "Concepto", 100), ("cantidad", "Cantidad", 80), ("total", "Total", 90)]:
             self.tabla_consumos.heading(col, text=titulo)
             self.tabla_consumos.column(col, width=ancho, anchor="center")
@@ -189,8 +162,7 @@ class PantallaPagosConsumos:
         ).pack(pady=(0, 12))
  
     def _crear_resumen(self):
-        caja = tk.Frame(self.frame, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE,
-                         highlightthickness=1)
+        caja = tk.Frame(self.frame, bg=COLOR_FONDO, highlightbackground=COLOR_BORDE, highlightthickness=1)
         caja.pack(fill=tk.X)
  
         tk.Label(caja, text="Resumen de la Cuenta", font=FUENTE_SUBTITULO,
@@ -201,7 +173,6 @@ class PantallaPagosConsumos:
         cuerpo.columnconfigure(0, weight=1)
         cuerpo.columnconfigure(1, weight=1)
  
-        # columna izquierda
         izq = tk.Frame(cuerpo, bg=COLOR_FONDO)
         izq.grid(row=0, column=0, sticky="w")
         self.lbl_estadia = tk.Label(izq, text="Estadía: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
@@ -209,7 +180,6 @@ class PantallaPagosConsumos:
         self.lbl_consumo = tk.Label(izq, text="Consumo: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
         self.lbl_consumo.pack(anchor="w", pady=2)
  
-        # columna derecha
         der = tk.Frame(cuerpo, bg=COLOR_FONDO)
         der.grid(row=0, column=1, sticky="e")
         self.lbl_total = tk.Label(der, text="Total: $0", font=FUENTE_TEXTO, bg=COLOR_FONDO)
@@ -289,15 +259,18 @@ class PantallaPagosConsumos:
         if not criterio or criterio == "# De confirmación o DNI":
             messagebox.showwarning("Buscar Reserva", "Ingresá un número de confirmación o DNI.")
             return
-        # TODO: reemplazar por consulta real a la base de datos (tabla RESERVAS)
-        reserva = buscar_reserva_mock(criterio)
+        
+        # Buscamos de verdad en MySQL
+        reserva = obtener_cuenta_por_dni_o_reserva(criterio)
+        
         if reserva is None:
-            messagebox.showerror("Buscar Reserva", "No se encontró ninguna reserva con ese dato.")
+            messagebox.showerror("Buscar Reserva", f"No se encontró reserva para el DNI/N°: {criterio}.")
             return
         self._cargar_reserva(reserva)
  
     def _abrir_dialogo_pago(self):
         if not self.reserva:
+            messagebox.showwarning("Atención", "Primero buscá una reserva.")
             return
         self._abrir_dialogo_generico(
             titulo="Agregar Pago",
@@ -312,16 +285,20 @@ class PantallaPagosConsumos:
             messagebox.showerror("Agregar Pago", "El monto debe ser un número.")
             return False
         metodo = valores["metodo"].strip() or "Efectivo"
-        self.reserva["pagos"].append({
-            "fecha": date.today().strftime("%d/%m/%Y"),
-            "metodo": metodo,
-            "monto": monto,
-        })
-        self._refrescar_tablas()
-        return True
+        
+        # Guardamos en la Base de Datos real
+        id_reserva = self.reserva["id_reserva"]
+        if insertar_pago_bd(id_reserva, monto, metodo):
+            # Refrescamos la pantalla buscando de nuevo
+            self._cargar_reserva(obtener_cuenta_por_dni_o_reserva(str(id_reserva)))
+            return True
+        else:
+            messagebox.showerror("Error", "No se pudo guardar el pago en la base de datos.")
+            return False
  
     def _abrir_dialogo_consumo(self):
         if not self.reserva:
+            messagebox.showwarning("Atención", "Primero buscá una reserva.")
             return
         self._abrir_dialogo_generico(
             titulo="Agregar Consumo",
@@ -340,16 +317,17 @@ class PantallaPagosConsumos:
         if not concepto:
             messagebox.showerror("Agregar Consumo", "El concepto es obligatorio.")
             return False
-        self.reserva["consumos"].append({
-            "concepto": concepto,
-            "cantidad": cantidad,
-            "precio_unitario": precio,
-        })
-        self._refrescar_tablas()
-        return True
+        
+        # Guardamos en la Base de Datos real
+        id_reserva = self.reserva["id_reserva"]
+        if insertar_consumo_bd(id_reserva, concepto, cantidad, precio):
+            self._cargar_reserva(obtener_cuenta_por_dni_o_reserva(str(id_reserva)))
+            return True
+        else:
+            messagebox.showerror("Error", "No se pudo guardar el consumo en la base de datos.")
+            return False
  
     def _abrir_dialogo_generico(self, titulo, campos, al_guardar):
-        """Crea un Toplevel simple con un Entry por campo y un botón Guardar."""
         ventana = tk.Toplevel(self.frame)
         ventana.title(titulo)
         ventana.configure(bg=COLOR_FONDO)
@@ -376,13 +354,11 @@ class PantallaPagosConsumos:
         ).grid(row=len(campos), column=0, columnspan=2, pady=(5, 12))
  
     def _on_imprimir(self):
-        # TODO: generar ticket/comprobante (PDF o impresión directa)
         messagebox.showinfo("Imprimir", "Generación de ticket todavía no implementada.")
  
     def _on_finalizar(self):
         if not self.reserva:
             return
-        # TODO: cerrar la cuenta en la base de datos (marcar reserva como Finalizada)
         messagebox.showinfo("Finalizar / Cobrar", "Cuenta cerrada correctamente (placeholder).")
  
  

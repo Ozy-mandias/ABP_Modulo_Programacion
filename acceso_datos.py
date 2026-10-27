@@ -1627,46 +1627,128 @@ def eliminar_consulta(id_consulta):
         if cursor:
             cursor.close()
         cerrar_conexion(conexion)
-def validar_consulta(datos):
-    """
-    Valida los datos de una consulta.
-    Recibe un dict con: fecha, remitente, medio, asunto, estado.
-    Retorna (es_valido, lista_de_errores).
-    """
-    errores = []
 
-    # Remitente
-    remitente = (datos.get('remitente') or '').strip()
-    if not remitente:
-        errores.append("El remitente es obligatorio.")
-    elif len(remitente) > 100:
-        errores.append("El remitente no puede superar los 100 caracteres.")
 
-    # Asunto
-    asunto = (datos.get('asunto') or '').strip()
-    if not asunto:
-        errores.append("El asunto es obligatorio.")
+def obtener_cuenta_por_dni_o_reserva(criterio):
+    """Busca una reserva por DNI o por N° de Reserva (ID) y arma el paquete de datos."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return None
 
-    # Medio (según CHECK de la BD: WhatsApp, Web, Telefono, Email)
-    medio = datos.get('medio')
-    medios_validos = ('WhatsApp', 'Web', 'Telefono', 'Email')
-    if medio not in medios_validos:
-        errores.append("El medio debe ser WhatsApp, Web, Telefono o Email.")
+    cursor = None
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        
+        sql_reserva = """
+            SELECT r.id_reserva, r.precio_total, r.fecha_ingreso, r.fecha_salida,
+                   h.nombre, h.apellido, hab.id_habitacion, hab.tipo_habitacion
+            FROM reserva r
+            INNER JOIN reserva_huesped rh ON rh.id_reserva = r.id_reserva AND rh.rol = 'titular'
+            INNER JOIN huesped h ON h.id_huesped = rh.id_huesped
+            INNER JOIN reserva_habitacion rhab ON rhab.id_reserva = r.id_reserva
+            INNER JOIN habitacion hab ON hab.id_habitacion = rhab.id_habitacion
+            WHERE h.dni = %s OR r.id_reserva = %s
+            LIMIT 1
+        """
+        cursor.execute(sql_reserva, (criterio, criterio))
+        res = cursor.fetchone()
+        
+        if not res:
+            return None
+            
+        id_reserva = res['id_reserva']
 
-    # Estado (según CHECK de la BD: Pendiente, Terminado, Archivado)
-    estado = datos.get('estado')
-    estados_validos = ('Pendiente', 'Terminado', 'Archivado')
-    if estado not in estados_validos:
-        errores.append("El estado debe ser Pendiente, Terminado o Archivado.")
+        # Pagos
+        cursor.execute("""
+            SELECT fecha_pago AS fecha, metodo_pago AS metodo, total_pagado AS monto
+            FROM pago WHERE id_reserva = %s
+            ORDER BY fecha_pago DESC
+        """, (id_reserva,))
+        pagos = cursor.fetchall()
+        for p in pagos:
+            if hasattr(p['fecha'], 'strftime'):
+                p['fecha'] = p['fecha'].strftime('%d/%m/%Y')
 
-    # Fecha (formato AAAA-MM-DD)
-    fecha = (datos.get('fecha') or '').strip()
-    if not fecha:
-        errores.append("La fecha es obligatoria.")
-    else:
-        try:
-            datetime.strptime(fecha, "%Y-%m-%d")
-        except ValueError:
-            errores.append("La fecha debe tener formato AAAA-MM-DD (ej: 2026-10-22).")
+        # Consumos
+        cursor.execute("""
+            SELECT cc.nombre AS concepto, c.cantidad, c.precio_unitario
+            FROM consumo c
+            INNER JOIN concepto_consumo cc ON cc.id_concepto = c.id_concepto
+            WHERE c.id_reserva = %s
+        """, (id_reserva,))
+        consumos = cursor.fetchall()
 
-    return (len(errores) == 0, errores)
+        return {
+            "id_reserva": id_reserva,
+            "confirmacion": str(id_reserva),
+            "huespede": f"{res['nombre']} {res['apellido']}",
+            "habitacion": f"{res['id_habitacion']} ({res['tipo_habitacion'].capitalize()})",
+            "check_in": res['fecha_ingreso'].strftime('%d/%m/%Y'),
+            "check_out": res['fecha_salida'].strftime('%d/%m/%Y'),
+            "total_estadia": float(res['precio_total']),
+            "pagos": pagos,
+            "consumos": consumos
+        }
+    except Exception as e:
+        print(f"Error al buscar cuenta: {e}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        cerrar_conexion(conexion)
+
+
+def insertar_pago_bd(id_reserva, monto, metodo):
+    """Guarda un pago en la base de datos."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return False
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            INSERT INTO pago (id_reserva, fecha_pago, total_pagado, metodo_pago, estado_pago, id_usuario_registro)
+            VALUES (%s, CURDATE(), %s, %s, 'aprobado', 1)
+        """, (id_reserva, monto, metodo))
+        conexion.commit()
+        return True
+    except Exception as e:
+        print(f"Error al guardar pago: {e}")
+        return False
+    finally:
+        if cursor: cursor.close()
+        cerrar_conexion(conexion)
+
+
+def insertar_consumo_bd(id_reserva, concepto, cantidad, precio):
+    """Guarda un consumo (creando el concepto si no existe) en la base de datos."""
+    conexion = obtener_conexion()
+    if not conexion:
+        return False
+    cursor = None
+    try:
+        cursor = conexion.cursor()
+        
+        # 1. Verificar si el concepto existe, si no, crearlo
+        cursor.execute("SELECT id_concepto FROM concepto_consumo WHERE nombre = %s", (concepto,))
+        row = cursor.fetchone()
+        
+        if row:
+            id_concepto = row[0]
+        else:
+            cursor.execute("INSERT INTO concepto_consumo (nombre, precio_unitario) VALUES (%s, %s)", (concepto, precio))
+            id_concepto = cursor.lastrowid
+            
+        # 2. Insertar el consumo
+        cursor.execute("""
+            INSERT INTO consumo (id_reserva, id_concepto, cantidad, precio_unitario, id_usuario_registro)
+            VALUES (%s, %s, %s, %s, 1)
+        """, (id_reserva, id_concepto, cantidad, precio))
+        conexion.commit()
+        return True
+    except Exception as e:
+        print(f"Error al guardar consumo: {e}")
+        return False
+    finally:
+        if cursor: cursor.close()
+        cerrar_conexion(conexion)
